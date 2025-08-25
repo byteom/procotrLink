@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -18,39 +18,63 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Camera, Timer } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-const mockExam = {
-    title: 'React Fundamentals Quiz',
-    timeLimit: 1, // in minutes
-    questions: [
-        {
-            questionText: "What is JSX?",
-            options: ["A JavaScript syntax extension", "A templating engine", "A CSS preprocessor", "A database query language"],
-            correctAnswer: "A JavaScript syntax extension"
-        },
-        {
-            questionText: "Which hook is used to perform side effects in a function component?",
-            options: ["useState", "useEffect", "useContext", "useReducer"],
-            correctAnswer: "useEffect"
-        },
-        {
-            questionText: "What is a component in React?",
-            options: ["A function that returns HTML", "A reusable piece of UI", "A CSS class", "A JavaScript file"],
-            correctAnswer: "A reusable piece of UI"
-        }
-    ]
-};
+interface Question {
+    questionText: string;
+    options: string[];
+    correctAnswer: string;
+}
+
+interface Exam {
+    title: string;
+    timeLimit: number;
+    questions: Question[];
+}
 
 export default function TakeExamPage() {
   const router = useRouter();
+  const params = useParams();
+  const examId = params.id as string;
   const { toast } = useToast();
+
+  const [exam, setExam] = useState<Exam | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
-  const [timeLeft, setTimeLeft] = useState(mockExam.timeLimit * 60);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [warningCount, setWarningCount] = useState(0);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!examId) return;
+
+    const fetchExam = async () => {
+        try {
+            const docRef = doc(db, "exams", examId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const examData = docSnap.data() as Exam;
+                setExam(examData);
+                setTimeLeft((examData.timeLimit || 30) * 60);
+            } else {
+                console.log("No such document!");
+                toast({ title: "Error", description: "Exam not found.", variant: "destructive" });
+                router.push('/');
+            }
+        } catch (error) {
+            console.error("Error fetching exam:", error);
+            toast({ title: "Error", description: "Failed to load the exam.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchExam();
+  }, [examId, router, toast]);
 
   // Proctoring features
   useEffect(() => {
@@ -101,29 +125,35 @@ export default function TakeExamPage() {
 
   // Timer
   useEffect(() => {
+    if (loading) return;
     if (timeLeft <= 0) {
       submitExam();
       return;
     }
     const timerId = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(timerId);
-  }, [timeLeft]);
+  }, [timeLeft, loading]);
   
   const submitExam = () => {
-      // Logic to submit exam and calculate score
-      router.push('/exam/results');
+      // Logic to submit exam and calculate score would go here
+      // For now, just redirect to a results page
+      router.push(`/exam/results?examId=${examId}`);
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex < mockExam.questions.length - 1) {
+    if (exam && currentQuestionIndex < exam.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       submitExam();
     }
   };
 
-  const currentQuestion = mockExam.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / mockExam.questions.length) * 100;
+  if (loading || !exam) {
+      return <div>Loading exam...</div>;
+  }
+
+  const currentQuestion = exam.questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -135,7 +165,7 @@ export default function TakeExamPage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background p-4 md:p-8">
       <Card className="w-full max-w-4xl z-10">
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <CardTitle>{mockExam.title}</CardTitle>
+          <CardTitle>{exam.title}</CardTitle>
           <div className="flex items-center gap-4">
              <div className="flex items-center gap-2 text-lg font-medium text-primary">
                 <Timer className="h-6 w-6" />
@@ -149,7 +179,7 @@ export default function TakeExamPage() {
         </CardHeader>
         <CardContent className="pt-6">
           <Progress value={progress} className="mb-4" />
-          <p className="text-sm text-muted-foreground mb-4">Question {currentQuestionIndex + 1} of {mockExam.questions.length}</p>
+          <p className="text-sm text-muted-foreground mb-4">Question {currentQuestionIndex + 1} of {exam.questions.length}</p>
           <h2 className="text-xl md:text-2xl font-semibold mb-6">{currentQuestion.questionText}</h2>
           
           <RadioGroup 
@@ -171,7 +201,7 @@ export default function TakeExamPage() {
 
           <div className="mt-8 flex justify-end">
             <Button onClick={handleNext} disabled={!answers[currentQuestionIndex]}>
-              {currentQuestionIndex < mockExam.questions.length - 1 ? 'Next Question' : 'Submit Exam'}
+              {currentQuestionIndex < exam.questions.length - 1 ? 'Next Question' : 'Submit Exam'}
             </Button>
           </div>
         </CardContent>

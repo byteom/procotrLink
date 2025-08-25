@@ -90,7 +90,7 @@ export default function DashboardLayout({
                 Create Exam
               </Link>
               <Link
-                href="#"
+                href="/dashboard/results"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
                 prefetch={false}
               >
@@ -153,7 +153,7 @@ export default function DashboardLayout({
                   Create Exam
                 </Link>
                 <Link
-                  href="#"
+                  href="/dashboard/results"
                   className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
                 >
                   <Users className="h-5 w-5" />
@@ -186,10 +186,10 @@ export default function DashboardLayout({
               <Button variant="secondary" size="icon" className="rounded-full">
                  <Image
                   src="https://placehold.co/36x36.png"
+                  data-ai-hint="user avatar"
                   width={36}
                   height={36}
                   alt="Avatar"
-                  data-ai-hint="user avatar"
                   className="rounded-full"
                 />
                 <span className="sr-only">Toggle user menu</span>

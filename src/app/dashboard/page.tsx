@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,36 +21,68 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
-const exams = [
-  {
-    title: 'React Fundamentals Quiz',
-    status: 'Published',
-    participants: 25,
-    created: '2023-10-29',
-  },
-  {
-    title: 'Advanced JavaScript Test',
-    status: 'Draft',
-    participants: 0,
-    created: '2023-11-05',
-  },
-  {
-    title: 'CSS Grid and Flexbox',
-    status: 'Published',
-    participants: 52,
-    created: '2023-09-15',
-  },
-    {
-    title: 'Node.js Backend Concepts',
-    status: 'Archived',
-    participants: 18,
-    created: '2023-08-20',
-  },
-];
-
+interface Exam {
+  id: string;
+  title: string;
+  status: 'Published' | 'Draft' | 'Archived';
+  participants: number;
+  createdAt: Timestamp;
+}
 
 export default function Dashboard() {
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const q = query(collection(db, "exams"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const examsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Firestore returns a Timestamp object, let's keep it for now
+          // and format it in the JSX
+        } as Omit<Exam, 'status' | 'participants'> & { id: string, createdAt: Timestamp, questions: any[] }));
+        
+        // Let's add mock status and participants for now
+        const formattedExams = examsData.map(exam => ({
+            ...exam,
+            status: 'Published', // Mock status
+            participants: Math.floor(Math.random() * 100), // Mock participants
+        }));
+
+        setExams(formattedExams as Exam[]);
+
+      } catch (error) {
+        console.error("Error fetching exams: ", error);
+        // Handle error (e.g., show a toast message)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExams();
+  }, []);
+
+  const formatDate = (timestamp: Timestamp) => {
+    if (!timestamp) return 'N/A';
+    return timestamp.toDate().toLocaleDateString();
+  };
+  
+  const handleEdit = (id: string) => {
+      router.push(`/dashboard/edit/${id}`);
+  };
+
+  if (loading) {
+    return <div>Loading exams...</div>
+  }
+
   return (
     <>
       <div className="flex items-center">
@@ -85,13 +120,13 @@ export default function Dashboard() {
             </TableHeader>
             <TableBody>
               {exams.map((exam) => (
-                <TableRow key={exam.title}>
+                <TableRow key={exam.id}>
                   <TableCell className="font-medium">{exam.title}</TableCell>
                   <TableCell>
                     <Badge variant={exam.status === 'Published' ? 'default' : (exam.status === 'Draft' ? 'secondary' : 'outline')}>{exam.status}</Badge>
                   </TableCell>
                   <TableCell>{exam.participants}</TableCell>
-                  <TableCell>{exam.created}</TableCell>
+                  <TableCell>{formatDate(exam.createdAt)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -106,8 +141,8 @@ export default function Dashboard() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>View Results</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(exam.id)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/dashboard/results?examId=${exam.id}`)}>View Results</DropdownMenuItem>
                          <DropdownMenuItem className="text-destructive">
                           Delete
                         </DropdownMenuItem>
