@@ -52,6 +52,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface Question {
   id: string;
@@ -63,8 +65,10 @@ interface Question {
 export default function CreateExamPage() {
   const { toast } = useToast();
   const [examTitle, setExamTitle] = useState('');
+  const [examDescription, setExamDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [examLink, setExamLink] = useState('');
 
   const addQuestion = () => {
@@ -142,8 +146,8 @@ export default function CreateExamPage() {
     }
   };
 
-  const saveAndGenerateLink = () => {
-    if(!examTitle || questions.length === 0) {
+  const saveExam = async () => {
+     if(!examTitle || questions.length === 0) {
       toast({
         variant: "destructive",
         title: "Incomplete Exam",
@@ -151,9 +155,31 @@ export default function CreateExamPage() {
       });
       return;
     }
-    const examId = `exam-${Date.now()}`;
-    setExamLink(`${window.location.origin}/exam/${examId}`);
-  };
+    setIsSaving(true);
+    try {
+        const examData = {
+            title: examTitle,
+            description: examDescription,
+            questions: questions.map(({id, ...rest}) => rest), // remove temporary id
+            createdAt: serverTimestamp(),
+        };
+        const docRef = await addDoc(collection(db, "exams"), examData);
+        setExamLink(`${window.location.origin}/exam/${docRef.id}`);
+        toast({
+            title: "Exam Saved!",
+            description: "Your exam has been saved successfully.",
+        });
+    } catch(error) {
+        console.error("Error saving exam: ", error);
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: "There was an error saving your exam.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  }
 
 
   return (
@@ -169,7 +195,9 @@ export default function CreateExamPage() {
             </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={saveAndGenerateLink}>Save & Generate Link</Button>
+                <Button size="sm" onClick={saveExam} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save & Generate Link'}
+                </Button>
               </DialogTrigger>
               {examLink && (
                  <DialogContent>
@@ -220,6 +248,8 @@ export default function CreateExamPage() {
                     <Textarea
                       id="description"
                       placeholder="A short description about the exam."
+                      value={examDescription}
+                      onChange={(e) => setExamDescription(e.target.value)}
                     />
                   </div>
                 </div>
@@ -301,7 +331,9 @@ export default function CreateExamPage() {
           <Button variant="outline" size="sm">
             Discard
           </Button>
-          <Button size="sm">Save & Generate Link</Button>
+          <Button size="sm" onClick={saveExam} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save & Generate Link'}
+          </Button>
         </div>
       </div>
     </div>
