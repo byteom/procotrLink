@@ -35,6 +35,14 @@ export default function LoginPage() {
   };
 
   const handleSignUp = async () => {
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Sign-up Failed",
+        description: "Please enter both email and password.",
+      });
+      return;
+    }
      try {
       await createUserWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
