@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 interface Submission {
   id: string;
@@ -37,12 +37,12 @@ function ResultsContent() {
             try {
                 const q = query(
                     collection(db, "submissions"),
-                    where("examId", "==", examId),
-                    orderBy("submittedAt", "desc")
+                    where("examId", "==", examId)
                 );
                 const querySnapshot = await getDocs(q);
                 const resultsData = querySnapshot.docs.map(doc => {
                     const data = doc.data();
+                    const submittedAt = data.submittedAt as Timestamp;
                     return {
                         id: doc.id,
                         participantName: data.participantName,
@@ -50,7 +50,7 @@ function ResultsContent() {
                         score: `${data.score}/${data.totalQuestions}`,
                         totalQuestions: data.totalQuestions,
                         status: 'Completed',
-                        submittedAt: (data.submittedAt as Timestamp).toDate().toLocaleString(),
+                        submittedAt: submittedAt ? submittedAt.toDate().toLocaleString() : 'N/A',
                     } as Submission;
                 });
                 setSubmissions(resultsData);
