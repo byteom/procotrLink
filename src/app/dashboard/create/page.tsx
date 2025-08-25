@@ -53,6 +53,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
+import { generateExamDescription } from '@/ai/flows/generate-exam-description';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -70,6 +71,7 @@ export default function CreateExamPage() {
   const [examDescription, setExamDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [examLink, setExamLink] = useState('');
 
@@ -121,7 +123,7 @@ export default function CreateExamPage() {
     setQuestions(newQuestions);
   }
 
-  const handleAiGenerate = async (topic: string, difficulty: 'easy' | 'medium' | 'hard', numberOfQuestions: number) => {
+  const handleAiGenerateQuestions = async (topic: string, difficulty: 'easy' | 'medium' | 'hard', numberOfQuestions: number) => {
     setIsGenerating(true);
     try {
       const result = await generateExamQuestions({ topic, difficulty, numberOfQuestions });
@@ -147,6 +149,35 @@ export default function CreateExamPage() {
       setIsGenerating(false);
     }
   };
+
+  const handleAiGenerateDescription = async () => {
+    if (!examTitle) {
+      toast({
+        variant: "destructive",
+        title: "No Topic",
+        description: "Please provide an exam title first.",
+      });
+      return;
+    }
+    setIsGeneratingDesc(true);
+    try {
+      const result = await generateExamDescription({ topic: examTitle });
+      setExamDescription(result.description);
+      toast({
+          title: "Success!",
+          description: `Description has been generated for "${examTitle}".`,
+      });
+    } catch (error) {
+      console.error('AI description generation failed', error);
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "Failed to generate description. Please try again.",
+      });
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  }
 
   const saveExam = async () => {
      if(!examTitle || questions.length === 0) {
@@ -230,7 +261,13 @@ export default function CreateExamPage() {
                     />
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="description">Description (Optional)</Label>
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="description">Description (Optional)</Label>
+                      <Button variant="ghost" size="sm" onClick={handleAiGenerateDescription} disabled={isGeneratingDesc || !examTitle}>
+                        <Wand2 className="mr-2 h-3 w-3"/>
+                        {isGeneratingDesc ? 'Generating...' : 'Generate with AI'}
+                      </Button>
+                    </div>
                     <Textarea
                       id="description"
                       placeholder="A short description about the exam."
@@ -281,7 +318,7 @@ export default function CreateExamPage() {
                     <Button onClick={addQuestion} variant="outline" className="w-full">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Question
                     </Button>
-                    <AiQuestionGenerator onGenerate={handleAiGenerate} isGenerating={isGenerating} />
+                    <AiQuestionGenerator onGenerate={handleAiGenerateQuestions} isGenerating={isGenerating} />
                 </div>
               </CardContent>
             </Card>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +50,7 @@ export default function TakeExamPage() {
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -82,17 +84,27 @@ export default function TakeExamPage() {
   // Proctoring features
   useEffect(() => {
     // 1. Camera Monitoring
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setHasCameraPermission(true);
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-      })
-      .catch(err => {
-        console.error("Camera access denied:", err);
-        setDialogMessage("Camera access is required for this exam. Please enable camera access and refresh the page.");
-        setShowWarningDialog(true);
-      });
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera and microphone permissions in your browser settings to start the exam.',
+        });
+      }
+    };
+
+    getCameraPermission();
+
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -128,7 +140,7 @@ export default function TakeExamPage() {
 
   // Timer
   useEffect(() => {
-    if (loading || isSubmitting) return;
+    if (loading || isSubmitting || !hasCameraPermission) return;
     if (timeLeft <= 0) {
       submitExam();
       return;
@@ -136,7 +148,7 @@ export default function TakeExamPage() {
     const timerId = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(timerId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, loading, isSubmitting]);
+  }, [timeLeft, loading, isSubmitting, hasCameraPermission]);
   
   const submitExam = async () => {
       if (isSubmitting || !exam) return;
@@ -209,6 +221,22 @@ export default function TakeExamPage() {
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background p-4 md:p-8">
+       {!hasCameraPermission && (
+          <Card className="w-full max-w-4xl z-20 mb-4">
+              <CardHeader>
+                  <CardTitle>Camera & Microphone Required</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Action Required</AlertTitle>
+                      <AlertDescription>
+                         Please grant camera and microphone access in your browser to begin the exam. If you've already denied it, you'll need to change the setting in your browser and refresh the page.
+                      </AlertDescription>
+                  </Alert>
+              </CardContent>
+          </Card>
+      )}
       <Card className="w-full max-w-4xl z-10">
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
           <CardTitle>{exam.title}</CardTitle>
@@ -236,6 +264,7 @@ export default function TakeExamPage() {
                 setAnswers(newAnswers);
             }}
             value={answers[currentQuestionIndex] || ''}
+            disabled={!hasCameraPermission || isSubmitting}
           >
             {currentQuestion.options.map((option, index) => (
               <div key={index} className="flex items-center space-x-2 p-4 border rounded-lg transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
@@ -246,7 +275,7 @@ export default function TakeExamPage() {
           </RadioGroup>
 
           <div className="mt-8 flex justify-end">
-            <Button onClick={handleNext} disabled={!answers[currentQuestionIndex] || isSubmitting}>
+            <Button onClick={handleNext} disabled={!answers[currentQuestionIndex] || isSubmitting || !hasCameraPermission}>
               {isSubmitting 
                 ? 'Submitting...' 
                 : (currentQuestionIndex < exam.questions.length - 1 ? 'Next Question' : 'Submit Exam')}
@@ -260,7 +289,7 @@ export default function TakeExamPage() {
            <video ref={videoRef} autoPlay muted className="w-full h-full object-cover" />
            <div className="absolute top-2 left-2 bg-black/50 text-white p-1 rounded-md flex items-center gap-1">
              <Camera className="h-4 w-4" />
-             <span className="text-xs">ON</span>
+             <span className="text-xs">{hasCameraPermission ? 'ON' : 'OFF'}</span>
            </div>
         </div>
       </div>
