@@ -31,6 +31,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -45,17 +46,19 @@ export default function DashboardLayout({
     router.push('/login');
   };
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         Loading...
       </div>
     );
-  }
-
-  if (!user) {
-    router.replace('/login');
-    return null;
   }
 
   return (
