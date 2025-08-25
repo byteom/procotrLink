@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   File,
   PlusCircle,
@@ -64,6 +65,7 @@ interface Question {
 
 export default function CreateExamPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [examTitle, setExamTitle] = useState('');
   const [examDescription, setExamDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -169,6 +171,13 @@ export default function CreateExamPage() {
             title: "Exam Saved!",
             description: "Your exam has been saved successfully.",
         });
+        
+        // Reset form and navigate to dashboard
+        setExamTitle('');
+        setExamDescription('');
+        setQuestions([]);
+        router.push('/dashboard');
+
     } catch(error) {
         console.error("Error saving exam: ", error);
         toast({
@@ -190,35 +199,12 @@ export default function CreateExamPage() {
             Exam Builder
           </h1>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
               Discard
             </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" onClick={saveExam} disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save & Generate Link'}
-                </Button>
-              </DialogTrigger>
-              {examLink && (
-                 <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Exam Link Generated!</DialogTitle>
-                    <DialogDescription>
-                      Share this link with your participants.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex items-center space-x-2">
-                    <Input value={examLink} readOnly />
-                    <Button onClick={() => navigator.clipboard.writeText(examLink)}>Copy</Button>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button type="button">Done</Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              )}
-            </Dialog>
+            <Button size="sm" onClick={saveExam} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Exam'}
+            </Button>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
@@ -328,11 +314,11 @@ export default function CreateExamPage() {
           </div>
         </div>
         <div className="flex items-center justify-center gap-2 md:hidden">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
             Discard
           </Button>
           <Button size="sm" onClick={saveExam} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save & Generate Link'}
+            {isSaving ? 'Saving...' : 'Save Exam'}
           </Button>
         </div>
       </div>

@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Link2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Table,
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, Timestamp, where,getCountFromServer } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
 
 interface Exam {
   id: string;
@@ -37,6 +39,7 @@ export default function Dashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchExams = async () => {
@@ -84,8 +87,17 @@ export default function Dashboard() {
       router.push(`/dashboard/edit/${id}`);
   };
 
-   const handleViewResults = (exam: Exam) => {
+  const handleViewResults = (exam: Exam) => {
     router.push(`/dashboard/results?examId=${exam.id}&title=${encodeURIComponent(exam.title)}`);
+  };
+
+  const handleCopyLink = (examId: string) => {
+    const link = `${window.location.origin}/exam/${examId}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link Copied!",
+      description: "The exam link has been copied to your clipboard.",
+    });
   };
 
 
@@ -158,6 +170,11 @@ export default function Dashboard() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => handleEdit(exam.id)}>Edit</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleViewResults(exam)}>View Results</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyLink(exam.id)}>
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive">
                             Delete
                           </DropdownMenuItem>
