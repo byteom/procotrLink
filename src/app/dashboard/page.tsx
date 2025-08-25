@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, PlusCircle, Link2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Link2, Tag } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ interface Exam {
   status: 'Published' | 'Draft' | 'Archived';
   participants: number;
   createdAt: Timestamp;
+  tags?: string[];
 }
 
 export default function Dashboard() {
@@ -132,7 +134,7 @@ export default function Dashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Exam Title</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Tags</TableHead>
                 <TableHead className="text-center">Participants</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>
@@ -150,7 +152,9 @@ export default function Dashboard() {
                   <TableRow key={exam.id}>
                     <TableCell className="font-medium">{exam.title}</TableCell>
                     <TableCell>
-                      <Badge variant={exam.status === 'Published' ? 'default' : (exam.status === 'Draft' ? 'secondary' : 'outline')}>{exam.status}</Badge>
+                      <div className="flex flex-wrap gap-1">
+                          {exam.tags?.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">{exam.participants}</TableCell>
                     <TableCell>{formatDate(exam.createdAt)}</TableCell>

@@ -10,7 +10,8 @@ import {
   Wand2,
   Clock,
   Repeat,
-  AlertCircle
+  AlertCircle,
+  Tag
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -51,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
@@ -63,6 +65,7 @@ interface Question {
   questionText: string;
   options: string[];
   correctAnswer: string;
+  timeLimit?: number;
 }
 
 export default function CreateExamPage() {
@@ -70,13 +73,16 @@ export default function CreateExamPage() {
   const router = useRouter();
   const [examTitle, setExamTitle] = useState('');
   const [examDescription, setExamDescription] = useState('');
+  const [tags, setTags] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  
   const [timeLimit, setTimeLimit] = useState(30); // Default 30 minutes
   const [allowedAttempts, setAllowedAttempts] = useState(1); // Default 1 attempt
+  const [perQuestionTimer, setPerQuestionTimer] = useState(false);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [examLink, setExamLink] = useState('');
 
   const addQuestion = () => {
     setQuestions([
@@ -86,6 +92,7 @@ export default function CreateExamPage() {
         questionText: '',
         options: ['', '', '', ''],
         correctAnswer: '',
+        timeLimit: 60, // Default 60 seconds
       },
     ]);
   };
@@ -94,10 +101,10 @@ export default function CreateExamPage() {
     setQuestions(questions.filter((q) => q.id !== id));
   };
   
-  const handleQuestionChange = (id: string, value: string) => {
+  const handleQuestionChange = (id: string, field: keyof Question, value: any) => {
     const newQuestions = questions.map((q) => {
       if (q.id === id) {
-        return { ...q, questionText: value };
+        return { ...q, [field]: value };
       }
       return q;
     });
@@ -135,6 +142,7 @@ export default function CreateExamPage() {
         questionText: q.questionText,
         options: q.options,
         correctAnswer: q.correctAnswer,
+        timeLimit: 60,
       }));
       setQuestions(prev => [...prev, ...newQuestions]);
       toast({
@@ -196,22 +204,19 @@ export default function CreateExamPage() {
         const examData = {
             title: examTitle,
             description: examDescription,
+            tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
             questions: questions.map(({id, ...rest}) => rest), // remove temporary id
-            timeLimit,
+            timeLimit: perQuestionTimer ? null : timeLimit,
+            perQuestionTimer,
             allowedAttempts,
             createdAt: serverTimestamp(),
         };
-        const docRef = await addDoc(collection(db, "exams"), examData);
-        setExamLink(`${window.location.origin}/exam/${docRef.id}`);
+        await addDoc(collection(db, "exams"), examData);
         toast({
             title: "Exam Saved!",
             description: "Your exam has been saved successfully.",
         });
         
-        // Reset form and navigate to dashboard
-        setExamTitle('');
-        setExamDescription('');
-        setQuestions([]);
         router.push('/dashboard');
 
     } catch(error) {
@@ -249,7 +254,7 @@ export default function CreateExamPage() {
               <CardHeader>
                 <CardTitle>Exam Details</CardTitle>
                 <CardDescription>
-                  Provide a title and description for your exam.
+                  Provide a title, description, and tags for your exam.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -280,6 +285,17 @@ export default function CreateExamPage() {
                       onChange={(e) => setExamDescription(e.target.value)}
                     />
                   </div>
+                   <div className="grid gap-3">
+                    <Label htmlFor="tags" className="flex items-center"><Tag className="mr-2 h-4 w-4"/>Tags (comma-separated)</Label>
+                    <Input
+                      id="tags"
+                      type="text"
+                      className="w-full"
+                      placeholder="e.g. React, Intermediate, Q3-Hiring"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -298,7 +314,7 @@ export default function CreateExamPage() {
                             <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                      </div>
-                      <Textarea id={`q-text-${q.id}`} placeholder="Enter your question" value={q.questionText} onChange={e => handleQuestionChange(q.id, e.target.value)} />
+                      <Textarea id={`q-text-${q.id}`} placeholder="Enter your question" value={q.questionText} onChange={e => handleQuestionChange(q.id, 'questionText', e.target.value)} />
                       <div className="grid grid-cols-2 gap-4 mt-4">
                         {q.options.map((opt, optIndex) => (
                           <Input key={optIndex} placeholder={`Option ${optIndex + 1}`} value={opt} onChange={e => handleOptionChange(q.id, optIndex, e.target.value)}/>
@@ -317,6 +333,12 @@ export default function CreateExamPage() {
                             </SelectContent>
                         </Select>
                       </div>
+                      {perQuestionTimer && (
+                         <div className="mt-4">
+                            <Label htmlFor={`q-time-${q.id}`} className="flex items-center"><Clock className="mr-2 h-4 w-4" />Time Limit (seconds)</Label>
+                            <Input id={`q-time-${q.id}`} type="number" placeholder="e.g. 60" value={q.timeLimit} onChange={e => handleQuestionChange(q.id, 'timeLimit', Number(e.target.value))} min="10" />
+                        </div>
+                      )}
                   </Card>
                 ))}
                 <div className="flex gap-2 pt-4">
@@ -335,9 +357,13 @@ export default function CreateExamPage() {
                 <CardTitle>Exam Settings</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6">
+                 <div className="flex items-center space-x-2">
+                    <Switch id="per-question-timer" checked={perQuestionTimer} onCheckedChange={setPerQuestionTimer} />
+                    <Label htmlFor="per-question-timer">Per-Question Timer</Label>
+                </div>
                 <div className="grid gap-3">
                     <Label htmlFor="time-limit" className="flex items-center"><Clock className="mr-2 h-4 w-4"/>Time Limit (minutes)</Label>
-                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" />
+                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" disabled={perQuestionTimer} />
                 </div>
                  <div className="grid gap-3">
                     <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>

@@ -11,25 +11,14 @@ import {
   Clock,
   Repeat,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Tag
 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -52,17 +41,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 interface Question {
   id: string;
   questionText: string;
   options: string[];
   correctAnswer: string;
+  timeLimit?: number;
 }
 
 export default function EditExamPage() {
@@ -73,9 +64,13 @@ export default function EditExamPage() {
 
   const [examTitle, setExamTitle] = useState('');
   const [examDescription, setExamDescription] = useState('');
+  const [tags, setTags] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  
   const [timeLimit, setTimeLimit] = useState(30);
   const [allowedAttempts, setAllowedAttempts] = useState(1);
+  const [perQuestionTimer, setPerQuestionTimer] = useState(false);
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,9 +88,11 @@ export default function EditExamPage() {
                 const data = docSnap.data();
                 setExamTitle(data.title);
                 setExamDescription(data.description);
+                setTags((data.tags || []).join(', '));
                 setQuestions(data.questions.map((q: any, index: number) => ({...q, id: `q-${Date.now()}-${index}`})));
                 setTimeLimit(data.timeLimit || 30);
                 setAllowedAttempts(data.allowedAttempts || 1);
+                setPerQuestionTimer(data.perQuestionTimer || false);
             } else {
                 toast({ variant: "destructive", title: "Error", description: "Exam not found." });
                 router.push('/dashboard');
@@ -119,6 +116,7 @@ export default function EditExamPage() {
         questionText: '',
         options: ['', '', '', ''],
         correctAnswer: '',
+        timeLimit: 60,
       },
     ]);
   };
@@ -127,10 +125,10 @@ export default function EditExamPage() {
     setQuestions(questions.filter((q) => q.id !== id));
   };
   
-  const handleQuestionChange = (id: string, value: string) => {
+  const handleQuestionChange = (id: string, field: keyof Question, value: any) => {
     const newQuestions = questions.map((q) => {
       if (q.id === id) {
-        return { ...q, questionText: value };
+        return { ...q, [field]: value };
       }
       return q;
     });
@@ -168,6 +166,7 @@ export default function EditExamPage() {
         questionText: q.questionText,
         options: q.options,
         correctAnswer: q.correctAnswer,
+        timeLimit: 60
       }));
       setQuestions(prev => [...prev, ...newQuestions]);
       toast({
@@ -201,8 +200,10 @@ export default function EditExamPage() {
         const examData = {
             title: examTitle,
             description: examDescription,
+            tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
             questions: questions.map(({id, ...rest}) => rest), // remove temporary id
-            timeLimit,
+            timeLimit: perQuestionTimer ? null : timeLimit,
+            perQuestionTimer,
             allowedAttempts,
             updatedAt: serverTimestamp(),
         };
@@ -254,7 +255,7 @@ export default function EditExamPage() {
               <CardHeader>
                 <CardTitle>Exam Details</CardTitle>
                 <CardDescription>
-                  Provide a title and description for your exam.
+                  Update the title, description, and tags for your exam.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -279,6 +280,17 @@ export default function EditExamPage() {
                       onChange={(e) => setExamDescription(e.target.value)}
                     />
                   </div>
+                   <div className="grid gap-3">
+                    <Label htmlFor="tags" className="flex items-center"><Tag className="mr-2 h-4 w-4"/>Tags (comma-separated)</Label>
+                    <Input
+                      id="tags"
+                      type="text"
+                      className="w-full"
+                      placeholder="e.g. React, Intermediate, Q3-Hiring"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -297,7 +309,7 @@ export default function EditExamPage() {
                             <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                      </div>
-                      <Textarea id={`q-text-${q.id}`} placeholder="Enter your question" value={q.questionText} onChange={e => handleQuestionChange(q.id, e.target.value)} />
+                      <Textarea id={`q-text-${q.id}`} placeholder="Enter your question" value={q.questionText} onChange={e => handleQuestionChange(q.id, 'questionText', e.target.value)} />
                       <div className="grid grid-cols-2 gap-4 mt-4">
                         {q.options.map((opt, optIndex) => (
                           <Input key={optIndex} placeholder={`Option ${optIndex + 1}`} value={opt} onChange={e => handleOptionChange(q.id, optIndex, e.target.value)}/>
@@ -316,6 +328,12 @@ export default function EditExamPage() {
                             </SelectContent>
                         </Select>
                       </div>
+                       {perQuestionTimer && (
+                         <div className="mt-4">
+                            <Label htmlFor={`q-time-${q.id}`} className="flex items-center"><Clock className="mr-2 h-4 w-4" />Time Limit (seconds)</Label>
+                            <Input id={`q-time-${q.id}`} type="number" placeholder="e.g. 60" value={q.timeLimit} onChange={e => handleQuestionChange(q.id, 'timeLimit', Number(e.target.value))} min="10" />
+                        </div>
+                      )}
                   </Card>
                 ))}
                 <div className="flex gap-2 pt-4">
@@ -333,10 +351,14 @@ export default function EditExamPage() {
               <CardHeader>
                 <CardTitle>Exam Settings</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-6">
+               <CardContent className="grid gap-6">
+                 <div className="flex items-center space-x-2">
+                    <Switch id="per-question-timer" checked={perQuestionTimer} onCheckedChange={setPerQuestionTimer} />
+                    <Label htmlFor="per-question-timer">Per-Question Timer</Label>
+                </div>
                 <div className="grid gap-3">
                     <Label htmlFor="time-limit" className="flex items-center"><Clock className="mr-2 h-4 w-4"/>Time Limit (minutes)</Label>
-                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" />
+                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" disabled={perQuestionTimer} />
                 </div>
                  <div className="grid gap-3">
                     <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +18,8 @@ interface ExamDetails {
     title: string;
     description: string;
     questions: any[];
-    timeLimit: number;
+    timeLimit?: number;
+    perQuestionTimer: boolean;
     allowedAttempts: number;
 }
 
@@ -53,8 +53,9 @@ export default function ExamTakerDetailsPage() {
                     title: data.title, 
                     description: data.description,
                     questions: data.questions || [],
-                    timeLimit: data.timeLimit || 30,
+                    timeLimit: data.timeLimit,
                     allowedAttempts: data.allowedAttempts || 1,
+                    perQuestionTimer: data.perQuestionTimer || false,
                 });
             } else {
                 // Handle exam not found
@@ -136,7 +137,9 @@ export default function ExamTakerDetailsPage() {
           <div className="grid grid-cols-3 gap-4 text-center mb-6 border-y py-4">
              <div>
                 <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><Clock className="w-4 h-4"/> Time</dt>
-                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.timeLimit} mins`}</dd>
+                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : (
+                    examDetails?.perQuestionTimer ? "Per Question" : `${examDetails?.timeLimit} mins`
+                )}</dd>
              </div>
              <div>
                 <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><HelpCircle className="w-4 h-4"/> Questions</dt>

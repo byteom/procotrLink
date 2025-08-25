@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,11 +27,13 @@ interface Question {
     questionText: string;
     options: string[];
     correctAnswer: string;
+    timeLimit?: number;
 }
 
 interface Exam {
     title: string;
-    timeLimit: number;
+    timeLimit?: number;
+    perQuestionTimer: boolean;
     questions: Question[];
 }
 
@@ -52,109 +54,14 @@ export default function TakeExamPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!examId) return;
-
-    const fetchExam = async () => {
-        try {
-            const docRef = doc(db, "exams", examId);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const examData = docSnap.data() as Exam;
-                setExam(examData);
-                setAnswers(new Array(examData.questions.length).fill(null));
-                setTimeLeft((examData.timeLimit || 30) * 60);
-            } else {
-                console.log("No such document!");
-                toast({ title: "Error", description: "Exam not found.", variant: "destructive" });
-                router.push('/');
-            }
-        } catch (error) {
-            console.error("Error fetching exam:", error);
-            toast({ title: "Error", description: "Failed to load the exam.", variant: "destructive" });
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchExam();
-  }, [examId, router, toast]);
-
-  // Proctoring features
-  useEffect(() => {
-    // 1. Camera Monitoring
-    const getCameraPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setHasCameraPermission(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera and microphone permissions in your browser settings to start the exam.',
-        });
-      }
-    };
-
-    getCameraPermission();
-
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setWarningCount(c => c + 1);
-        setDialogMessage(`You have switched tabs. This is your warning #${warningCount + 1}.`);
-        setShowWarningDialog(true);
-        toast({ title: 'Warning: Tab Switch Detected', variant: 'destructive' });
-      }
-    };
-    
-    const handleCopyPaste = (e: ClipboardEvent) => {
-        e.preventDefault();
-        setWarningCount(c => c + 1);
-        toast({ title: 'Warning: Copy/Paste Disabled', description: 'This action is not allowed during the exam.', variant: 'destructive' });
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('copy', handleCopyPaste);
-    window.addEventListener('paste', handleCopyPaste);
-    window.addEventListener('cut', handleCopyPaste);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('copy', handleCopyPaste);
-      window.removeEventListener('paste', handleCopyPaste);
-      window.removeEventListener('cut', handleCopyPaste);
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [warningCount, toast]);
-
-  // Timer
-  useEffect(() => {
-    if (loading || isSubmitting || !hasCameraPermission) return;
-    if (timeLeft <= 0) {
-      submitExam();
-      return;
-    }
-    const timerId = setInterval(() => setTimeLeft(t => t - 1), 1000);
-    return () => clearInterval(timerId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, loading, isSubmitting, hasCameraPermission]);
   
-  const submitExam = async () => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const submitExam = useCallback(async () => {
       if (isSubmitting || !exam) return;
       setIsSubmitting(true);
+      if(timerRef.current) clearInterval(timerRef.current);
       
-      // Calculate score
       let score = 0;
       exam.questions.forEach((q, index) => {
           if(q.correctAnswer === answers[index]){
@@ -162,7 +69,6 @@ export default function TakeExamPage() {
           }
       });
 
-      // Get participant details from local storage
       const participantName = localStorage.getItem('proctorlink-participant-name') || 'Anonymous';
       const participantEmail = localStorage.getItem('proctorlink-participant-email') || 'No Email';
       const collegeName = localStorage.getItem('proctorlink-participant-college') || 'N/A';
@@ -183,7 +89,6 @@ export default function TakeExamPage() {
             warningCount,
         });
         
-        // Clean up local storage
         localStorage.removeItem('proctorlink-participant-name');
         localStorage.removeItem('proctorlink-participant-email');
         localStorage.removeItem('proctorlink-participant-college');
@@ -196,16 +101,121 @@ export default function TakeExamPage() {
         toast({ title: "Submission Failed", description: "Could not submit your exam. Please try again.", variant: "destructive" });
         setIsSubmitting(false);
       }
-  };
+  }, [exam, answers, examId, isSubmitting, router, toast, warningCount]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (exam && currentQuestionIndex < exam.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       submitExam();
     }
-  };
+  }, [exam, currentQuestionIndex, submitExam]);
 
+
+  useEffect(() => {
+    if (!examId) return;
+
+    const fetchExam = async () => {
+        try {
+            const docRef = doc(db, "exams", examId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const examData = docSnap.data() as Exam;
+                setExam(examData);
+                setAnswers(new Array(examData.questions.length).fill(null));
+                if (!examData.perQuestionTimer) {
+                  setTimeLeft((examData.timeLimit || 30) * 60);
+                }
+            } else {
+                toast({ title: "Error", description: "Exam not found.", variant: "destructive" });
+                router.push('/');
+            }
+        } catch (error) {
+            console.error("Error fetching exam:", error);
+            toast({ title: "Error", description: "Failed to load the exam.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchExam();
+  }, [examId, router, toast]);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions to start the exam.',
+        });
+      }
+    };
+    getCameraPermission();
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setWarningCount(c => c + 1);
+        setDialogMessage(`You have switched tabs. This is your warning #${warningCount + 1}.`);
+        setShowWarningDialog(true);
+        toast({ title: 'Warning: Tab Switch Detected', variant: 'destructive' });
+      }
+    };
+    const handleCopyPaste = (e: ClipboardEvent) => { e.preventDefault(); setWarningCount(c => c + 1); toast({ title: 'Warning: Copy/Paste Disabled', variant: 'destructive' }); };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('copy', handleCopyPaste);
+    window.addEventListener('paste', handleCopyPaste);
+    window.addEventListener('cut', handleCopyPaste);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('copy', handleCopyPaste);
+      window.removeEventListener('paste', handleCopyPaste);
+      window.removeEventListener('cut', handleCopyPaste);
+      if (videoRef.current && videoRef.current.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      }
+      if(timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [warningCount, toast]);
+
+  // Timer logic
+  useEffect(() => {
+    if (loading || isSubmitting || !hasCameraPermission || !exam) return;
+
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    if (exam.perQuestionTimer) {
+      const questionTime = exam.questions[currentQuestionIndex]?.timeLimit || 60;
+      setTimeLeft(questionTime);
+    }
+
+    if (timeLeft <= 0 && exam.perQuestionTimer) {
+      handleNext();
+      return;
+    }
+    
+    if (timeLeft <= 0 && !exam.perQuestionTimer) {
+      submitExam();
+      return;
+    }
+
+    timerRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
+
+    return () => {
+      if(timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [loading, isSubmitting, hasCameraPermission, exam, timeLeft, currentQuestionIndex, submitExam, handleNext]);
+  
   if (loading || !exam) {
       return <div className="flex items-center justify-center min-h-screen">Loading exam...</div>;
   }
@@ -223,15 +233,13 @@ export default function TakeExamPage() {
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-background p-4 md:p-8">
        {!hasCameraPermission && (
           <Card className="w-full max-w-4xl z-20 mb-4">
-              <CardHeader>
-                  <CardTitle>Camera & Microphone Required</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Camera & Microphone Required</CardTitle></CardHeader>
               <CardContent>
                   <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertTitle>Action Required</AlertTitle>
                       <AlertDescription>
-                         Please grant camera and microphone access in your browser to begin the exam. If you've already denied it, you'll need to change the setting in your browser and refresh the page.
+                         Please grant camera and microphone access in your browser to begin the exam.
                       </AlertDescription>
                   </Alert>
               </CardContent>
