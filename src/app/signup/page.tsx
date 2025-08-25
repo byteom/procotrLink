@@ -8,29 +8,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GraduationCap } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
-    } catch (error) {
+    if (!email || !password) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        title: "Sign-up Failed",
+        description: "Please enter both email and password.",
       });
-      console.error("Login failed:", error);
+      return;
+    }
+     try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard');
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Sign-up Failed",
+        description: "Could not create an account. Please try again.",
+      });
+      console.error("Sign up failed:", error);
     }
   };
 
@@ -41,13 +49,13 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <GraduationCap className="w-12 h-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl text-center">Organizer Login</CardTitle>
+          <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
           <CardDescription className="text-center">
-            Enter your email below to login to your account
+            Enter your email and password to create an account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="grid gap-4">
+          <form onSubmit={handleSignUp} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -60,12 +68,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link href="#" className="ml-auto inline-block text-sm underline" prefetch={false}>
-                  Forgot your password?
-                </Link>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -75,16 +78,16 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full">
-              Login
+              Sign Up
             </Button>
-            <Button variant="outline" className="w-full" asChild>
+             <Button variant="outline" className="w-full" asChild>
                 <Link href="/">Back to Home</Link>
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
+            Already have an account?{' '}
+            <Link href="/login" className="underline">
+              Login
             </Link>
           </div>
         </CardContent>
