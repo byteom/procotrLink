@@ -139,7 +139,7 @@ export default function Home() {
             </div>
             <div className="mx-auto grid max-w-5xl items-center gap-y-16">
               <div className="grid gap-6 md:grid-cols-2 md:items-center md:gap-12">
-                  <Image src="https://placehold.co/550x310.png" data-ai-hint="artificial intelligence brain" alt="AI Feature" width={550} height={310} className="rounded-lg" />
+                  <Image src="https://i.postimg.cc/WpqDJdk5/image.png" data-ai-hint="artificial intelligence brain" alt="AI Feature" width={550} height={310} className="rounded-lg" />
                   <div className="space-y-4">
                       <div className="bg-primary/10 text-primary p-3 rounded-full w-fit">
                           <Bot className="w-6 h-6" />
@@ -156,7 +156,7 @@ export default function Home() {
                       <h3 className="text-2xl font-bold">Advanced Proctoring Security</h3>
                       <p className="text-muted-foreground">Maintain the integrity of your exams. Our system restricts participants from switching tabs, copying/pasting content, and requires camera access to simulate a proctored environment, deterring cheating.</p>
                   </div>
-                   <Image src="https://placehold.co/550x310.png" data-ai-hint="security shield computer" alt="Security Feature" width={550} height={310} className="rounded-lg" />
+                   <Image src="https://i.postimg.cc/PqLHFwhc/image.png" data-ai-hint="security shield computer" alt="Security Feature" width={550} height={310} className="rounded-lg" />
               </div>
             </div>
           </div>
@@ -340,5 +340,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
