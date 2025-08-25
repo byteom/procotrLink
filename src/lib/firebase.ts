@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCxNrPzv3KY5CIAj275BOaJbBmuhzRTEmc",
   authDomain: "steel-ridge-437016-h3.firebaseapp.com",
   projectId: "steel-ridge-437016-h3",
-  storageBucket: "steel-ridge-437016-h3.appspot.com",
+  storageBucket: "steel-ridge-437016-h3.firebasestorage.app",
   messagingSenderId: "468926585357",
   appId: "1:468926585357:web:bf1d70991b3e52d405d344",
   measurementId: "G-4SDK14BP5Y"
