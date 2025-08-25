@@ -1,28 +1,68 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 
-// Mock data for demonstration. In a real app, you'd fetch this from your database.
-const mockResults = [
-  { id: '1', name: 'Alice Johnson', email: 'alice@example.com', score: '9/10', status: 'Completed', submittedAt: new Date().toLocaleString() },
-  { id: '2', name: 'Bob Williams', email: 'bob@example.com', score: '7/10', status: 'Completed', submittedAt: new Date().toLocaleString() },
-  { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', score: 'N/A', status: 'In Progress', submittedAt: '-' },
-  { id: '4', name: 'Diana Prince', email: 'diana@example.com', score: '10/10', status: 'Completed', submittedAt: new Date().toLocaleString() },
-];
-
+interface Submission {
+  id: string;
+  participantName: string;
+  participantEmail: string;
+  score: string;
+  totalQuestions: number;
+  status: 'Completed'; // Assuming all fetched are completed
+  submittedAt: string;
+}
 
 function ResultsContent() {
     const searchParams = useSearchParams();
     const examId = searchParams.get('examId');
-    const examTitle = searchParams.get('title') || 'Exam'; // In a real app, fetch title using examId
-    
-    // Here you would fetch actual results based on the examId
-    // For now, we'll just display mock data if an examId is present
-    const results = examId ? mockResults : [];
+    const examTitle = searchParams.get('title') || 'Exam';
+
+    const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!examId) {
+            setLoading(false);
+            return;
+        };
+
+        const fetchSubmissions = async () => {
+            setLoading(true);
+            try {
+                const q = query(
+                    collection(db, "submissions"),
+                    where("examId", "==", examId),
+                    orderBy("submittedAt", "desc")
+                );
+                const querySnapshot = await getDocs(q);
+                const resultsData = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        participantName: data.participantName,
+                        participantEmail: data.participantEmail,
+                        score: `${data.score}/${data.totalQuestions}`,
+                        totalQuestions: data.totalQuestions,
+                        status: 'Completed',
+                        submittedAt: (data.submittedAt as Timestamp).toDate().toLocaleString(),
+                    } as Submission;
+                });
+                setSubmissions(resultsData);
+            } catch (error) {
+                console.error("Error fetching submissions:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSubmissions();
+    }, [examId]);
 
     return (
         <div className="flex flex-col gap-4">
@@ -46,17 +86,27 @@ function ResultsContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {results.map(result => (
-                                    <TableRow key={result.id}>
-                                        <TableCell className="font-medium">{result.name}</TableCell>
-                                        <TableCell>{result.email}</TableCell>
-                                        <TableCell>{result.score}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={result.status === 'Completed' ? 'default' : 'secondary'}>{result.status}</Badge>
-                                        </TableCell>
-                                        <TableCell>{result.submittedAt}</TableCell>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24">Loading results...</TableCell>
                                     </TableRow>
-                                ))}
+                                ) : submissions.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24">No submissions yet for this exam.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    submissions.map(result => (
+                                        <TableRow key={result.id}>
+                                            <TableCell className="font-medium">{result.participantName}</TableCell>
+                                            <TableCell>{result.participantEmail}</TableCell>
+                                            <TableCell>{result.score}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={result.status === 'Completed' ? 'default' : 'secondary'}>{result.status}</Badge>
+                                            </TableCell>
+                                            <TableCell>{result.submittedAt}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
@@ -78,7 +128,7 @@ function ResultsContent() {
 
 export default function ResultsPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             <ResultsContent />
         </Suspense>
     )

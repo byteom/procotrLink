@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,9 +13,14 @@ export default function ExamTakerDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const examId = params.id;
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
 
   const startExam = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Store participant details in localStorage to be retrieved on the exam page
+    localStorage.setItem('proctorlink-participant-name', fullName);
+    localStorage.setItem('proctorlink-participant-email', email);
     router.push(`/exam/${examId}/take`);
   };
 
@@ -34,11 +40,11 @@ export default function ExamTakerDetailsPage() {
           <form onSubmit={startExam} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" placeholder="John Doe" required />
+              <Input id="fullName" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="john.doe@example.com" required />
+              <Input id="email" type="email" placeholder="john.doe@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div className="items-top flex space-x-2 pt-2">
               <Checkbox id="terms" required/>

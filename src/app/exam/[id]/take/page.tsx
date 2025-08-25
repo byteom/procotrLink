@@ -19,7 +19,7 @@ import {
 import { AlertTriangle, Camera, Timer } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface Question {
     questionText: string;
@@ -42,11 +42,12 @@ export default function TakeExamPage() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<(string | null)[]>([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const [warningCount, setWarningCount] = useState(0);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function TakeExamPage() {
             if (docSnap.exists()) {
                 const examData = docSnap.data() as Exam;
                 setExam(examData);
+                setAnswers(new Array(examData.questions.length).fill(null));
                 setTimeLeft((examData.timeLimit || 30) * 60);
             } else {
                 console.log("No such document!");
@@ -125,19 +127,56 @@ export default function TakeExamPage() {
 
   // Timer
   useEffect(() => {
-    if (loading) return;
+    if (loading || isSubmitting) return;
     if (timeLeft <= 0) {
       submitExam();
       return;
     }
     const timerId = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(timerId);
-  }, [timeLeft, loading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, loading, isSubmitting]);
   
-  const submitExam = () => {
-      // Logic to submit exam and calculate score would go here
-      // For now, just redirect to a results page
-      router.push(`/exam/results?examId=${examId}`);
+  const submitExam = async () => {
+      if (isSubmitting || !exam) return;
+      setIsSubmitting(true);
+      
+      // Calculate score
+      let score = 0;
+      exam.questions.forEach((q, index) => {
+          if(q.correctAnswer === answers[index]){
+              score++;
+          }
+      });
+
+      // Get participant details from local storage
+      const participantName = localStorage.getItem('proctorlink-participant-name') || 'Anonymous';
+      const participantEmail = localStorage.getItem('proctorlink-participant-email') || 'No Email';
+      
+      try {
+        await addDoc(collection(db, 'submissions'), {
+            examId,
+            examTitle: exam.title,
+            participantName,
+            participantEmail,
+            answers,
+            score,
+            totalQuestions: exam.questions.length,
+            submittedAt: serverTimestamp(),
+            warningCount,
+        });
+        
+        // Clean up local storage
+        localStorage.removeItem('proctorlink-participant-name');
+        localStorage.removeItem('proctorlink-participant-email');
+        
+        router.push(`/exam/results?examId=${examId}`);
+
+      } catch (error) {
+        console.error("Error submitting exam:", error);
+        toast({ title: "Submission Failed", description: "Could not submit your exam. Please try again.", variant: "destructive" });
+        setIsSubmitting(false);
+      }
   };
 
   const handleNext = () => {
@@ -149,7 +188,7 @@ export default function TakeExamPage() {
   };
 
   if (loading || !exam) {
-      return <div>Loading exam...</div>;
+      return <div className="flex items-center justify-center min-h-screen">Loading exam...</div>;
   }
 
   const currentQuestion = exam.questions[currentQuestionIndex];
@@ -189,7 +228,7 @@ export default function TakeExamPage() {
                 newAnswers[currentQuestionIndex] = value;
                 setAnswers(newAnswers);
             }}
-            value={answers[currentQuestionIndex]}
+            value={answers[currentQuestionIndex] || ''}
           >
             {currentQuestion.options.map((option, index) => (
               <div key={index} className="flex items-center space-x-2 p-4 border rounded-lg transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
@@ -200,8 +239,10 @@ export default function TakeExamPage() {
           </RadioGroup>
 
           <div className="mt-8 flex justify-end">
-            <Button onClick={handleNext} disabled={!answers[currentQuestionIndex]}>
-              {currentQuestionIndex < exam.questions.length - 1 ? 'Next Question' : 'Submit Exam'}
+            <Button onClick={handleNext} disabled={!answers[currentQuestionIndex] || isSubmitting}>
+              {isSubmitting 
+                ? 'Submitting...' 
+                : (currentQuestionIndex < exam.questions.length - 1 ? 'Next Question' : 'Submit Exam')}
             </Button>
           </div>
         </CardContent>

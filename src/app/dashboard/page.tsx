@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, where,getCountFromServer } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 interface Exam {
@@ -41,23 +41,28 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        const q = query(collection(db, "exams"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
-        const examsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Firestore returns a Timestamp object, let's keep it for now
-          // and format it in the JSX
-        } as Omit<Exam, 'status' | 'participants'> & { id: string, createdAt: Timestamp, questions: any[] }));
+        const examsQuery = query(collection(db, "exams"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(examsQuery);
         
-        // Let's add mock status and participants for now
-        const formattedExams = examsData.map(exam => ({
+        const examsData = await Promise.all(querySnapshot.docs.map(async (doc) => {
+          const exam = {
+            id: doc.id,
+            ...doc.data()
+          } as Omit<Exam, 'status' | 'participants'> & { id: string, createdAt: Timestamp };
+
+          // Fetch participant count
+          const submissionsQuery = query(collection(db, "submissions"), where("examId", "==", doc.id));
+          const submissionsSnapshot = await getCountFromServer(submissionsQuery);
+          const participants = submissionsSnapshot.data().count;
+
+          return {
             ...exam,
-            status: 'Published', // Mock status
-            participants: Math.floor(Math.random() * 100), // Mock participants
+            participants,
+            status: 'Published', // Mock status, can be developed further
+          } as Exam;
         }));
 
-        setExams(formattedExams as Exam[]);
+        setExams(examsData);
 
       } catch (error) {
         console.error("Error fetching exams: ", error);
@@ -79,8 +84,13 @@ export default function Dashboard() {
       router.push(`/dashboard/edit/${id}`);
   };
 
+   const handleViewResults = (exam: Exam) => {
+    router.push(`/dashboard/results?examId=${exam.id}&title=${encodeURIComponent(exam.title)}`);
+  };
+
+
   if (loading) {
-    return <div>Loading exams...</div>
+    return <div className="flex items-center justify-center min-h-screen">Loading exams...</div>
   }
 
   return (
@@ -111,7 +121,7 @@ export default function Dashboard() {
               <TableRow>
                 <TableHead>Exam Title</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Participants</TableHead>
+                <TableHead className="text-center">Participants</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -119,38 +129,44 @@ export default function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {exams.map((exam) => (
-                <TableRow key={exam.id}>
-                  <TableCell className="font-medium">{exam.title}</TableCell>
-                  <TableCell>
-                    <Badge variant={exam.status === 'Published' ? 'default' : (exam.status === 'Draft' ? 'secondary' : 'outline')}>{exam.status}</Badge>
-                  </TableCell>
-                  <TableCell>{exam.participants}</TableCell>
-                  <TableCell>{formatDate(exam.createdAt)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEdit(exam.id)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push(`/dashboard/results?examId=${exam.id}`)}>View Results</DropdownMenuItem>
-                         <DropdownMenuItem className="text-destructive">
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {exams.length === 0 && !loading ? (
+                 <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">No exams found. Create one to get started!</TableCell>
+                  </TableRow>
+              ) : (
+                exams.map((exam) => (
+                  <TableRow key={exam.id}>
+                    <TableCell className="font-medium">{exam.title}</TableCell>
+                    <TableCell>
+                      <Badge variant={exam.status === 'Published' ? 'default' : (exam.status === 'Draft' ? 'secondary' : 'outline')}>{exam.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{exam.participants}</TableCell>
+                    <TableCell>{formatDate(exam.createdAt)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEdit(exam.id)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewResults(exam)}>View Results</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
