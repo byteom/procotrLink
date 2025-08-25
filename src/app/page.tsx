@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, ShieldCheck, Share2, Bot, Star, Server, Users, FileText } from 'lucide-react';
+import { GraduationCap, ShieldCheck, Share2, Bot, Star, Server, Users, FileText, Briefcase, School, Award, FilePlus2, BarChart, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export default function Home() {
   return (
@@ -14,11 +20,16 @@ export default function Home() {
               <GraduationCap className="h-6 w-6 text-primary" />
               <span className="ml-2 text-xl font-bold font-headline">ProctorLink</span>
             </Link>
-            <nav className="ml-auto flex gap-4 sm:gap-6">
+            <nav className="ml-auto hidden items-center gap-4 sm:flex">
+                <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">Features</Link>
+                <Link href="#use-cases" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">Use Cases</Link>
+                <Link href="#faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">FAQ</Link>
+            </nav>
+            <div className="ml-auto flex items-center gap-4 sm:ml-4">
               <Button asChild variant="default">
                 <Link href="/login">Organizer Login</Link>
               </Button>
-            </nav>
+            </div>
         </div>
       </header>
       <main className="flex-1">
@@ -39,7 +50,7 @@ export default function Home() {
                     <Link href="/dashboard/create">Create Your First Exam</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
-                    <Link href="#features">Learn More</Link>
+                    <Link href="#how-it-works">Learn More</Link>
                   </Button>
                 </div>
               </div>
@@ -76,10 +87,48 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32">
+        
+        <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">How It Works</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Get Started in 3 Easy Steps</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Our platform is designed to be intuitive and straightforward, so you can focus on creating great exams, not on learning complex software.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-3 md:gap-12 mt-12">
+              <div className="grid gap-1 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
+                  <FilePlus2 className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">1. Create & Customize</h3>
+                <p className="text-muted-foreground">Use our intuitive builder to create exams. Add questions manually or generate them with AI.</p>
+              </div>
+               <div className="grid gap-1 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
+                  <Share2 className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">2. Share Securely</h3>
+                <p className="text-muted-foreground">Generate a unique, secure link for each exam and share it with your participants.</p>
+              </div>
+               <div className="grid gap-1 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
+                  <BarChart className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-bold">3. Analyze Results</h3>
+                <p className="text-muted-foreground">View detailed results and analytics for each participant on your dashboard.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need for Secure Testing</h2>
@@ -88,38 +137,74 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:gap-16 mt-12">
-              <Card className="hover:shadow-lg transition-shadow border-transparent hover:border-primary">
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <Bot className="w-6 h-6 text-primary" />
+            <div className="mx-auto grid max-w-5xl items-center gap-y-16">
+              <div className="grid gap-6 md:grid-cols-2 md:items-center md:gap-12">
+                  <Image src="https://placehold.co/550x310.png" data-ai-hint="artificial intelligence brain" alt="AI Feature" width={550} height={310} className="rounded-lg" />
+                  <div className="space-y-4">
+                      <div className="bg-primary/10 text-primary p-3 rounded-full w-fit">
+                          <Bot className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-2xl font-bold">AI-Powered Question Tool</h3>
+                      <p className="text-muted-foreground">Save hours of work. Automatically generate relevant exam questions and descriptions based on any topic. Our AI is trained to create a variety of question styles to keep your exams engaging and effective.</p>
                   </div>
-                  <CardTitle>AI-Powered Question Tool</CardTitle>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2 md:items-center md:gap-12">
+                  <div className="space-y-4 md:order-last">
+                       <div className="bg-primary/10 text-primary p-3 rounded-full w-fit">
+                          <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-2xl font-bold">Advanced Proctoring Security</h3>
+                      <p className="text-muted-foreground">Maintain the integrity of your exams. Our system restricts participants from switching tabs, copying/pasting content, and requires camera access to simulate a proctored environment, deterring cheating.</p>
+                  </div>
+                   <Image src="https://placehold.co/550x310.png" data-ai-hint="security shield computer" alt="Security Feature" width={550} height={310} className="rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <section id="use-cases" className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Use Cases</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Designed for Every Need</h2>
+                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  ProctorLink is versatile enough to support a wide range of assessment scenarios.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
+              <Card className="hover:shadow-lg transition-shadow border-transparent hover:border-primary">
+                <CardHeader className="flex flex-col items-center text-center gap-4">
+                  <div className="bg-primary/10 p-4 rounded-full">
+                    <Briefcase className="w-8 h-8 text-primary" />
+                  </div>
+                  <CardTitle>For Hiring Managers</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Automatically generate relevant exam questions based on the topic you provide, saving you time and effort.</p>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">Efficiently screen job candidates with standardized technical assessments and coding challenges. Identify top talent faster.</p>
                 </CardContent>
               </Card>
               <Card className="hover:shadow-lg transition-shadow border-transparent hover:border-primary">
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <ShieldCheck className="w-6 h-6 text-primary" />
+                <CardHeader className="flex flex-col items-center text-center gap-4">
+                  <div className="bg-primary/10 p-4 rounded-full">
+                    <School className="w-8 h-8 text-primary" />
                   </div>
-                  <CardTitle>Advanced Proctoring</CardTitle>
+                  <CardTitle>For Educators</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Prevent cheating with screen, tab, and copy-paste restrictions, plus live camera monitoring.</p>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">Create engaging classroom quizzes, mid-terms, and final exams. Simplify your grading process and save valuable time.</p>
                 </CardContent>
               </Card>
               <Card className="hover:shadow-lg transition-shadow border-transparent hover:border-primary">
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <Share2 className="w-6 h-6 text-primary" />
+                <CardHeader className="flex flex-col items-center text-center gap-4">
+                  <div className="bg-primary/10 p-4 rounded-full">
+                    <Award className="w-8 h-8 text-primary" />
                   </div>
-                  <CardTitle>Easy Sharing & Access</CardTitle>
+                  <CardTitle>For Certification</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Create your exam and share a unique link with participants. It's that simple to get started.</p>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">Deliver secure, high-stakes certification exams with confidence. Our platform ensures a fair and reliable testing environment.</p>
                 </CardContent>
               </Card>
             </div>
@@ -187,7 +272,44 @@ export default function Home() {
             </div>
         </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32 border-t">
+        <section id="faq" className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container max-w-3xl px-4 md:px-6">
+             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">FAQ</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Frequently Asked Questions</h2>
+              </div>
+            </div>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>Is ProctorLink secure?</AccordionTrigger>
+                <AccordionContent>
+                  Yes, security is our top priority. We employ multiple layers of protection, including tab and screen restrictions, copy-paste prevention, and mandatory camera monitoring to ensure the integrity of every exam.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger>Can I use my own questions?</AccordionTrigger>
+                <AccordionContent>
+                  Absolutely! You can add all of your own questions and answers manually. The AI question generator is an optional tool to help you save time if you need it.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger>What happens if a student's internet disconnects?</AccordionTrigger>
+                <AccordionContent>
+                  Our platform is designed to be resilient. If a student temporarily loses connection, their progress is saved. However, for security reasons, the exam timer continues to run.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-4">
+                <AccordionTrigger>Is there a limit to the number of exams or participants?</AccordionTrigger>
+                <AccordionContent>
+                 Our standard plans are very generous and suitable for most organizations. If you have very large-scale needs, please contact us for enterprise solutions.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </section>
+
+        <section className="w-full py-12 md:py-24 lg:py-32 border-t bg-muted/40">
             <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
                 <div className="space-y-3">
                     <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Ready to Secure Your Exams?</h2>
@@ -218,3 +340,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
