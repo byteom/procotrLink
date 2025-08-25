@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, BookOpen, Clock, HelpCircle } from 'lucide-react';
+import { GraduationCap, Clock, HelpCircle, Repeat, School, Calendar } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
