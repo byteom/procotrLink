@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GraduationCap } from 'lucide-react';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,26 +18,49 @@ export default function SignUpPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const { toast } = useToast();
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email || !password || !referralCode) {
       toast({
         variant: "destructive",
         title: "Sign-up Failed",
-        description: "Please enter both email and password.",
+        description: "Please fill in all fields.",
       });
       return;
     }
      try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // Check if referral code is valid
+      const referralDocRef = doc(db, "referralCodes", referralCode);
+      const referralDoc = await getDoc(referralDocRef);
+
+      if (!referralDoc.exists() || !referralDoc.data().active) {
+        toast({
+          variant: "destructive",
+          title: "Sign-up Failed",
+          description: "Invalid or inactive referral code.",
+        });
+        return;
+      }
+      
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create a document in 'users' collection
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        createdAt: new Date(),
+        role: 'organizer'
+      });
+
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
        toast({
         variant: "destructive",
         title: "Sign-up Failed",
-        description: "Could not create an account. Please try again.",
+        description: error.message || "Could not create an account. Please try again.",
       });
       console.error("Sign up failed:", error);
     }
@@ -51,7 +75,7 @@ export default function SignUpPage() {
           </div>
           <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
           <CardDescription className="text-center">
-            Enter your email and password to create an account
+            Enter your details and referral code to create an account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,6 +99,17 @@ export default function SignUpPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+             <div className="grid gap-2">
+              <Label htmlFor="referral">Referral Code</Label>
+              <Input 
+                id="referral" 
+                type="text" 
+                required 
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                placeholder="Enter your referral code"
               />
             </div>
             <Button type="submit" className="w-full">

@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Menu,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -31,14 +32,13 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -46,19 +46,16 @@ export default function DashboardLayout({
     router.push('/login');
   };
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-
-
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         Loading...
       </div>
     );
+  }
+
+  if (!user) {
+      return null; // The AuthContext will handle the redirect
   }
 
   return (
@@ -97,6 +94,16 @@ export default function DashboardLayout({
                 <Users className="h-4 w-4" />
                 Results
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                  prefetch={false}
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin Panel
+                </Link>
+              )}
             </nav>
           </div>
           <div className="mt-auto p-4">
@@ -159,6 +166,15 @@ export default function DashboardLayout({
                   <Users className="h-5 w-5" />
                   Results
                 </Link>
+                 {isAdmin && (
+                    <Link
+                    href="/admin"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                    <Shield className="h-5 w-5" />
+                    Admin Panel
+                    </Link>
+                )}
               </nav>
               <div className="mt-auto">
                 <Card>
