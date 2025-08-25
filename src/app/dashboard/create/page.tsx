@@ -123,11 +123,11 @@ export default function CreateExamPage() {
     setIsGenerating(true);
     try {
       const result = await generateExamQuestions({ topic, difficulty, numberOfQuestions });
-      const newQuestions: Question[] = result.questions.map((qText, index) => ({
+      const newQuestions: Question[] = result.questions.map((q, index) => ({
         id: `ai-q-${Date.now()}-${index}`,
-        questionText: qText,
-        options: ["Sample Option 1", "Sample Option 2", "Sample Option 3", "Sample Option 4"], // Placeholder options
-        correctAnswer: "Sample Option 1" // Placeholder answer
+        questionText: q.questionText,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
       }));
       setQuestions(prev => [...prev, ...newQuestions]);
       toast({
