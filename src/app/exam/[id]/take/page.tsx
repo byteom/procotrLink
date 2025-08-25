@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -152,6 +153,8 @@ export default function TakeExamPage() {
       // Get participant details from local storage
       const participantName = localStorage.getItem('proctorlink-participant-name') || 'Anonymous';
       const participantEmail = localStorage.getItem('proctorlink-participant-email') || 'No Email';
+      const collegeName = localStorage.getItem('proctorlink-participant-college') || 'N/A';
+      const passingYear = localStorage.getItem('proctorlink-participant-year') || 'N/A';
       
       try {
         await addDoc(collection(db, 'submissions'), {
@@ -159,6 +162,8 @@ export default function TakeExamPage() {
             examTitle: exam.title,
             participantName,
             participantEmail,
+            collegeName,
+            passingYear,
             answers,
             score,
             totalQuestions: exam.questions.length,
@@ -169,6 +174,8 @@ export default function TakeExamPage() {
         // Clean up local storage
         localStorage.removeItem('proctorlink-participant-name');
         localStorage.removeItem('proctorlink-participant-email');
+        localStorage.removeItem('proctorlink-participant-college');
+        localStorage.removeItem('proctorlink-participant-year');
         
         router.push(`/exam/results?examId=${examId}`);
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
@@ -12,6 +13,8 @@ interface Submission {
   id: string;
   participantName: string;
   participantEmail: string;
+  collegeName: string;
+  passingYear: string;
   score: string;
   totalQuestions: number;
   status: 'Completed'; // Assuming all fetched are completed
@@ -47,6 +50,8 @@ function ResultsContent() {
                         id: doc.id,
                         participantName: data.participantName,
                         participantEmail: data.participantEmail,
+                        collegeName: data.collegeName,
+                        passingYear: data.passingYear,
                         score: `${data.score}/${data.totalQuestions}`,
                         totalQuestions: data.totalQuestions,
                         status: 'Completed',
@@ -80,6 +85,8 @@ function ResultsContent() {
                                 <TableRow>
                                     <TableHead>Participant Name</TableHead>
                                     <TableHead>Email</TableHead>
+                                    <TableHead>College</TableHead>
+                                    <TableHead>Passing Year</TableHead>
                                     <TableHead>Score</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Submitted At</TableHead>
@@ -88,17 +95,19 @@ function ResultsContent() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center h-24">Loading results...</TableCell>
+                                        <TableCell colSpan={7} className="text-center h-24">Loading results...</TableCell>
                                     </TableRow>
                                 ) : submissions.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center h-24">No submissions yet for this exam.</TableCell>
+                                        <TableCell colSpan={7} className="text-center h-24">No submissions yet for this exam.</TableCell>
                                     </TableRow>
                                 ) : (
                                     submissions.map(result => (
                                         <TableRow key={result.id}>
                                             <TableCell className="font-medium">{result.participantName}</TableCell>
                                             <TableCell>{result.participantEmail}</TableCell>
+                                            <TableCell>{result.collegeName}</TableCell>
+                                            <TableCell>{result.passingYear}</TableCell>
                                             <TableCell>{result.score}</TableCell>
                                             <TableCell>
                                                 <Badge variant={result.status === 'Completed' ? 'default' : 'secondary'}>{result.status}</Badge>
