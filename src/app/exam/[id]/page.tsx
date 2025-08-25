@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { GraduationCap, BookOpen, Calendar, School } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/hooks/use-toast";
 
 interface ExamDetails {
     title: string;
@@ -22,9 +23,11 @@ export default function ExamTakerDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const examId = params.id as string;
+  const { toast } = useToast();
   
   const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isChecking, setIsChecking] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,6 +48,7 @@ export default function ExamTakerDetailsPage() {
                 setExamDetails({ title: data.title, description: data.description });
             } else {
                 // Handle exam not found
+                toast({ variant: "destructive", title: "Not Found", description: "The exam you are looking for does not exist." });
                 router.push('/');
             }
         } catch(error) {
@@ -54,17 +58,43 @@ export default function ExamTakerDetailsPage() {
         }
     }
     fetchExamDetails();
-  }, [examId, router]);
+  }, [examId, router, toast]);
 
 
-  const startExam = (e: React.FormEvent<HTMLFormElement>) => {
+  const startExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Store participant details in localStorage to be retrieved on the exam page
-    localStorage.setItem('proctorlink-participant-name', fullName);
-    localStorage.setItem('proctorlink-participant-email', email);
-    localStorage.setItem('proctorlink-participant-college', collegeName);
-    localStorage.setItem('proctorlink-participant-year', passingYear);
-    router.push(`/exam/${examId}/take`);
+    setIsChecking(true);
+    try {
+        const submissionsRef = collection(db, "submissions");
+        const q = query(submissionsRef, where("examId", "==", examId), where("participantEmail", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            toast({
+                variant: "destructive",
+                title: "Already Attempted",
+                description: "You have already submitted this exam with this email address.",
+            });
+            return;
+        }
+
+        // Store participant details in localStorage to be retrieved on the exam page
+        localStorage.setItem('proctorlink-participant-name', fullName);
+        localStorage.setItem('proctorlink-participant-email', email);
+        localStorage.setItem('proctorlink-participant-college', collegeName);
+        localStorage.setItem('proctorlink-participant-year', passingYear);
+        router.push(`/exam/${examId}/take`);
+        
+    } catch (error) {
+        console.error("Error checking for previous submissions:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not verify your submission status. Please try again.",
+        });
+    } finally {
+        setIsChecking(false);
+    }
   };
 
   return (
@@ -124,8 +154,8 @@ export default function ExamTakerDetailsPage() {
                 </p>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              Start Exam
+            <Button type="submit" className="w-full" disabled={loading || isChecking}>
+              {isChecking ? 'Verifying...' : 'Start Exam'}
             </Button>
           </form>
         </CardContent>
