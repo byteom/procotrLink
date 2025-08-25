@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -70,6 +71,8 @@ export default function CreateExamPage() {
   const [examTitle, setExamTitle] = useState('');
   const [examDescription, setExamDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [timeLimit, setTimeLimit] = useState(30); // Default 30 minutes
+  const [allowedAttempts, setAllowedAttempts] = useState(1); // Default 1 attempt
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -194,6 +197,8 @@ export default function CreateExamPage() {
             title: examTitle,
             description: examDescription,
             questions: questions.map(({id, ...rest}) => rest), // remove temporary id
+            timeLimit,
+            allowedAttempts,
             createdAt: serverTimestamp(),
         };
         const docRef = await addDoc(collection(db, "exams"), examData);
@@ -332,11 +337,11 @@ export default function CreateExamPage() {
               <CardContent className="grid gap-6">
                 <div className="grid gap-3">
                     <Label htmlFor="time-limit" className="flex items-center"><Clock className="mr-2 h-4 w-4"/>Time Limit (minutes)</Label>
-                    <Input id="time-limit" type="number" placeholder="e.g. 60" />
+                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" />
                 </div>
                  <div className="grid gap-3">
                     <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>
-                    <Input id="attempts" type="number" defaultValue={1} placeholder="e.g. 1" />
+                    <Input id="attempts" type="number" placeholder="e.g. 1" value={allowedAttempts} onChange={e => setAllowedAttempts(Number(e.target.value))} min="1"/>
                 </div>
               </CardContent>
             </Card>

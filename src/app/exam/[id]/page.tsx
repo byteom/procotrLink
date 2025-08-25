@@ -1,22 +1,26 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, BookOpen, Calendar, School } from 'lucide-react';
+import { GraduationCap, BookOpen, Clock, HelpCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/hooks/use-toast";
 
 interface ExamDetails {
     title: string;
     description: string;
+    questions: any[];
+    timeLimit: number;
+    allowedAttempts: number;
 }
 
 export default function ExamTakerDetailsPage() {
@@ -45,7 +49,13 @@ export default function ExamTakerDetailsPage() {
             const docSnap = await getDoc(docRef);
             if(docSnap.exists()){
                 const data = docSnap.data();
-                setExamDetails({ title: data.title, description: data.description });
+                setExamDetails({ 
+                    title: data.title, 
+                    description: data.description,
+                    questions: data.questions || [],
+                    timeLimit: data.timeLimit || 30,
+                    allowedAttempts: data.allowedAttempts || 1,
+                });
             } else {
                 // Handle exam not found
                 toast({ variant: "destructive", title: "Not Found", description: "The exam you are looking for does not exist." });
@@ -63,17 +73,20 @@ export default function ExamTakerDetailsPage() {
 
   const startExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!examDetails) return;
+    
     setIsChecking(true);
     try {
         const submissionsRef = collection(db, "submissions");
         const q = query(submissionsRef, where("examId", "==", examId), where("participantEmail", "==", email));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getCountFromServer(q);
+        const attemptCount = querySnapshot.data().count;
 
-        if (!querySnapshot.empty) {
+        if (attemptCount >= examDetails.allowedAttempts) {
             toast({
                 variant: "destructive",
-                title: "Already Attempted",
-                description: "You have already submitted this exam with this email address.",
+                title: "Attempts Exceeded",
+                description: `You have already attempted this exam ${attemptCount} time(s). No more attempts are allowed.`,
             });
             return;
         }
@@ -120,6 +133,20 @@ export default function ExamTakerDetailsPage() {
           )}
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center mb-6 border-y py-4">
+             <div>
+                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><Clock className="w-4 h-4"/> Time</dt>
+                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.timeLimit} mins`}</dd>
+             </div>
+             <div>
+                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><HelpCircle className="w-4 h-4"/> Questions</dt>
+                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.questions.length}`}</dd>
+             </div>
+             <div>
+                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><Repeat className="w-4 h-4"/> Attempts</dt>
+                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.allowedAttempts}`}</dd>
+             </div>
+          </div>
           <form onSubmit={startExam} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">

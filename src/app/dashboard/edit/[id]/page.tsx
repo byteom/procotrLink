@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -73,6 +74,8 @@ export default function EditExamPage() {
   const [examTitle, setExamTitle] = useState('');
   const [examDescription, setExamDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [timeLimit, setTimeLimit] = useState(30);
+  const [allowedAttempts, setAllowedAttempts] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +94,8 @@ export default function EditExamPage() {
                 setExamTitle(data.title);
                 setExamDescription(data.description);
                 setQuestions(data.questions.map((q: any, index: number) => ({...q, id: `q-${Date.now()}-${index}`})));
+                setTimeLimit(data.timeLimit || 30);
+                setAllowedAttempts(data.allowedAttempts || 1);
             } else {
                 toast({ variant: "destructive", title: "Error", description: "Exam not found." });
                 router.push('/dashboard');
@@ -197,6 +202,8 @@ export default function EditExamPage() {
             title: examTitle,
             description: examDescription,
             questions: questions.map(({id, ...rest}) => rest), // remove temporary id
+            timeLimit,
+            allowedAttempts,
             updatedAt: serverTimestamp(),
         };
         await updateDoc(examRef, examData);
@@ -320,6 +327,31 @@ export default function EditExamPage() {
               </CardContent>
             </Card>
 
+          </div>
+           <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Exam Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-6">
+                <div className="grid gap-3">
+                    <Label htmlFor="time-limit" className="flex items-center"><Clock className="mr-2 h-4 w-4"/>Time Limit (minutes)</Label>
+                    <Input id="time-limit" type="number" placeholder="e.g. 60" value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} min="1" />
+                </div>
+                 <div className="grid gap-3">
+                    <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>
+                    <Input id="attempts" type="number" placeholder="e.g. 1" value={allowedAttempts} onChange={e => setAllowedAttempts(Number(e.target.value))} min="1"/>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-destructive/10 border-destructive">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="h-5 w-5"/>Proctoring Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-destructive-foreground">
+                    <p>Screen, tab, and copy-paste restrictions will be automatically enabled for all exams to ensure a fair testing environment.</p>
+                </CardContent>
+            </Card>
           </div>
         </div>
         <div className="flex items-center justify-center gap-2 md:hidden">
