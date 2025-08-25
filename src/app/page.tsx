@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, ShieldCheck, Share2, Bot, Star } from 'lucide-react';
+import { GraduationCap, ShieldCheck, Share2, Bot, Star, Server, Users, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -56,23 +56,25 @@ export default function Home() {
         </section>
 
         <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
-            <div className="container px-4 md:px-6">
-                 <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                    <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Trusted by Leading Organizations</h2>
-                    <p className="max-w-[600px] text-muted-foreground md:text-lg">
-                        Our platform is trusted by universities, hiring managers, and certification bodies worldwide.
-                    </p>
-                    <div className="w-full max-w-5xl pt-8">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 items-center">
-                            <Image src="https://placehold.co/140x70/png?text=InnovateU" width={140} height={70} alt="InnovateU Logo" data-ai-hint="company logo" className="mx-auto grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"/>
-                            <Image src="https://placehold.co/140x70/png?text=TechCorp" width={140} height={70} alt="TechCorp Logo" data-ai-hint="company logo" className="mx-auto grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"/>
-                            <Image src="https://placehold.co/140x70/png?text=GlobalLearn" width={140} height={70} alt="GlobalLearn Logo" data-ai-hint="company logo" className="mx-auto grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"/>
-                            <Image src="https://placehold.co/140x70/png?text=QuantumHire" width={140} height={70} alt="QuantumHire Logo" data-ai-hint="company logo" className="mx-auto grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"/>
-                            <Image src="https://placehold.co/140x70/png?text=NextGen+Academy" width={140} height={70} alt="NextGen Academy Logo" data-ai-hint="company logo" className="mx-auto grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"/>
-                        </div>
-                    </div>
-                 </div>
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="text-center">
+                <FileText className="mx-auto h-10 w-10 text-primary mb-4" />
+                <h3 className="text-4xl font-bold">5,000+</h3>
+                <p className="text-muted-foreground">Exams Taken</p>
+              </div>
+              <div className="text-center">
+                 <Users className="mx-auto h-10 w-10 text-primary mb-4" />
+                <h3 className="text-4xl font-bold">150+</h3>
+                <p className="text-muted-foreground">Organizers Trust Us</p>
+              </div>
+              <div className="text-center">
+                 <Server className="mx-auto h-10 w-10 text-primary mb-4" />
+                <h3 className="text-4xl font-bold">99.9%</h3>
+                <p className="text-muted-foreground">Uptime Guarantee</p>
+              </div>
             </div>
+          </div>
         </section>
 
         <section id="features" className="w-full py-12 md:py-24 lg:py-32">
