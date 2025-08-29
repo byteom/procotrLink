@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -12,16 +12,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Camera, Timer } from 'lucide-react';
+import { AlertTriangle, Camera, Timer, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 interface Question {
     questionText: string;
@@ -102,14 +105,24 @@ export default function TakeExamPage() {
         setIsSubmitting(false);
       }
   }, [exam, answers, examId, isSubmitting, router, toast, warningCount]);
-
-  const handleNext = useCallback(() => {
-    if (exam && currentQuestionIndex < exam.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      submitExam();
+  
+  const goToQuestion = (index: number) => {
+    if (exam && index >= 0 && index < exam.questions.length) {
+      setCurrentQuestionIndex(index);
     }
-  }, [exam, currentQuestionIndex, submitExam]);
+  };
+
+  const handleNext = () => {
+    if (exam && currentQuestionIndex < exam.questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+      if(currentQuestionIndex > 0){
+          setCurrentQuestionIndex(prev => prev - 1);
+      }
+  }
 
 
   useEffect(() => {
@@ -194,18 +207,22 @@ export default function TakeExamPage() {
 
     if (timerRef.current) clearInterval(timerRef.current);
 
+    let shouldAutoAdvance = false;
+
     if (exam.perQuestionTimer) {
       const questionTime = exam.questions[currentQuestionIndex]?.timeLimit || 60;
-      setTimeLeft(questionTime);
+      if (timeLeft <= 0 || currentQuestionIndex !== answers.findIndex(a => a === null)) { // Reset timer for new questions
+           setTimeLeft(questionTime);
+      }
+      shouldAutoAdvance = true;
     }
 
-    if (timeLeft <= 0 && exam.perQuestionTimer) {
-      handleNext();
-      return;
-    }
-    
-    if (timeLeft <= 0 && !exam.perQuestionTimer) {
-      submitExam();
+    if (timeLeft <= 0) {
+      if(shouldAutoAdvance && currentQuestionIndex < exam.questions.length - 1) {
+        handleNext();
+      } else {
+        submitExam();
+      }
       return;
     }
 
@@ -214,14 +231,13 @@ export default function TakeExamPage() {
     return () => {
       if(timerRef.current) clearInterval(timerRef.current);
     };
-  }, [loading, isSubmitting, hasCameraPermission, exam, timeLeft, currentQuestionIndex, submitExam, handleNext]);
+  }, [loading, isSubmitting, hasCameraPermission, exam, timeLeft, currentQuestionIndex, answers, submitExam, handleNext]);
   
   if (loading || !exam) {
       return <div className="flex items-center justify-center min-h-screen">Loading exam...</div>;
   }
 
   const currentQuestion = exam.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -245,54 +261,106 @@ export default function TakeExamPage() {
               </CardContent>
           </Card>
       )}
-      <Card className="w-full max-w-4xl z-10">
-        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <CardTitle>{exam.title}</CardTitle>
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 text-lg font-medium text-primary">
-                <Timer className="h-6 w-6" />
-                <span>{formatTime(timeLeft)}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 w-full max-w-7xl">
+        <Card className="w-full z-10 order-2 lg:order-1">
+            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+            <CardTitle>{exam.title} - Question {currentQuestionIndex + 1}</CardTitle>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-lg font-medium text-primary">
+                    <Timer className="h-6 w-6" />
+                    <span>{formatTime(timeLeft)}</span>
+                </div>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isSubmitting || !hasCameraPermission}>Submit Exam</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. You will not be able to change your answers after submitting.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={submitExam} disabled={isSubmitting}>
+                                {isSubmitting ? 'Submitting...' : 'Yes, submit my exam'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
-            <div className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                <span>{warningCount} Warnings</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <Progress value={progress} className="mb-4" />
-          <p className="text-sm text-muted-foreground mb-4">Question {currentQuestionIndex + 1} of {exam.questions.length}</p>
-          <h2 className="text-xl md:text-2xl font-semibold mb-6">{currentQuestion.questionText}</h2>
-          
-          <RadioGroup 
-            className="space-y-4"
-            onValueChange={(value) => {
-                const newAnswers = [...answers];
-                newAnswers[currentQuestionIndex] = value;
-                setAnswers(newAnswers);
-            }}
-            value={answers[currentQuestionIndex] || ''}
-            disabled={!hasCameraPermission || isSubmitting}
-          >
-            {currentQuestion.options.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2 p-4 border rounded-lg transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
-                <RadioGroupItem value={option} id={`option-${index}`} />
-                <Label htmlFor={`option-${index}`} className="text-base w-full cursor-pointer">{option}</Label>
-              </div>
-            ))}
-          </RadioGroup>
+            </CardHeader>
+            <CardContent className="pt-6">
+            <h2 className="text-xl md:text-2xl font-semibold mb-6">{currentQuestion.questionText}</h2>
+            
+            <RadioGroup 
+                className="space-y-4"
+                onValueChange={(value) => {
+                    const newAnswers = [...answers];
+                    newAnswers[currentQuestionIndex] = value;
+                    setAnswers(newAnswers);
+                }}
+                value={answers[currentQuestionIndex] || ''}
+                disabled={!hasCameraPermission || isSubmitting}
+            >
+                {currentQuestion.options.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2 p-4 border rounded-lg transition-colors has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
+                    <RadioGroupItem value={option} id={`option-${index}`} />
+                    <Label htmlFor={`option-${index}`} className="text-base w-full cursor-pointer">{option}</Label>
+                </div>
+                ))}
+            </RadioGroup>
+            </CardContent>
+             <CardFooter className="flex justify-between border-t pt-4">
+                <Button onClick={handlePrev} disabled={currentQuestionIndex === 0 || isSubmitting}>
+                    Previous
+                </Button>
+                {currentQuestionIndex < exam.questions.length - 1 ? (
+                    <Button onClick={handleNext} disabled={isSubmitting || !hasCameraPermission}>
+                        Next Question
+                    </Button>
+                ) : (
+                     <Button onClick={submitExam} disabled={isSubmitting || !hasCameraPermission}>
+                        {isSubmitting ? 'Submitting...' : 'Finish & Submit'}
+                    </Button>
+                )}
+            </CardFooter>
+        </Card>
 
-          <div className="mt-8 flex justify-end">
-            <Button onClick={handleNext} disabled={!answers[currentQuestionIndex] || isSubmitting || !hasCameraPermission}>
-              {isSubmitting 
-                ? 'Submitting...' 
-                : (currentQuestionIndex < exam.questions.length - 1 ? 'Next Question' : 'Submit Exam')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+         <Card className="w-full z-10 order-1 lg:order-2">
+            <CardHeader>
+                <CardTitle>Question Palette</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-5 gap-2">
+                {exam.questions.map((_, index) => (
+                    <Button
+                        key={index}
+                        variant={currentQuestionIndex === index ? 'default' : (answers[index] ? 'secondary' : 'outline')}
+                        className={cn(
+                          "h-10 w-10 p-0",
+                          answers[index] && "border-green-500"
+                        )}
+                        onClick={() => goToQuestion(index)}
+                    >
+                        {answers[index] ? <CheckCircle className="h-5 w-5" /> : index + 1}
+                    </Button>
+                ))}
+            </CardContent>
+             <CardFooter className="flex-col gap-2 items-start text-sm text-muted-foreground">
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-secondary border border-green-500"></div> Answered</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full border"></div> Unanswered</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">#</div> Current</div>
+                 <div className="flex items-center gap-2 mt-4 text-destructive">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>{warningCount} Warnings</span>
+                </div>
+             </CardFooter>
+        </Card>
+      </div>
 
-      <div className="fixed bottom-4 right-4 z-20">
+
+      <div className="fixed bottom-4 left-4 z-20">
         <div className="relative w-48 h-36 rounded-lg overflow-hidden border-2 border-primary shadow-lg">
            <video ref={videoRef} autoPlay muted className="w-full h-full object-cover" />
            <div className="absolute top-2 left-2 bg-black/50 text-white p-1 rounded-md flex items-center gap-1">
