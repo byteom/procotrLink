@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Clock, HelpCircle, Repeat, School, Calendar } from 'lucide-react';
+import { GraduationCap, Clock, HelpCircle, Repeat, School, Calendar, AlertTriangle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, getCountFromServer, Timestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/hooks/use-toast";
+import { format } from 'date-fns';
 
 interface ExamDetails {
     title: string;
@@ -21,6 +22,7 @@ interface ExamDetails {
     timeLimit?: number;
     perQuestionTimer: boolean;
     allowedAttempts: number;
+    expiryDate?: Timestamp;
 }
 
 export default function ExamTakerDetailsPage() {
@@ -32,6 +34,7 @@ export default function ExamTakerDetailsPage() {
   const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -48,15 +51,19 @@ export default function ExamTakerDetailsPage() {
             const docRef = doc(db, 'exams', examId);
             const docSnap = await getDoc(docRef);
             if(docSnap.exists()){
-                const data = docSnap.data();
-                setExamDetails({ 
-                    title: data.title, 
-                    description: data.description,
-                    questions: data.questions || [],
-                    timeLimit: data.timeLimit,
-                    allowedAttempts: data.allowedAttempts || 1,
-                    perQuestionTimer: data.perQuestionTimer || false,
-                });
+                const data = docSnap.data() as ExamDetails;
+                setExamDetails(data);
+                
+                if (data.expiryDate) {
+                  const expiry = data.expiryDate.toDate();
+                  const now = new Date();
+                  // Set time to end of day for comparison
+                  expiry.setHours(23, 59, 59, 999);
+                  if (now > expiry) {
+                    setIsExpired(true);
+                  }
+                }
+
             } else {
                 // Handle exam not found
                 toast({ variant: "destructive", title: "Not Found", description: "The exam you are looking for does not exist." });
@@ -74,7 +81,7 @@ export default function ExamTakerDetailsPage() {
 
   const startExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!examDetails) return;
+    if (!examDetails || isExpired) return;
     
     setIsChecking(true);
     try {
@@ -150,28 +157,42 @@ export default function ExamTakerDetailsPage() {
                 <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.allowedAttempts}`}</dd>
              </div>
           </div>
+          {examDetails?.expiryDate && (
+             <div className="text-center text-sm text-muted-foreground mb-4">
+                  <p className="flex items-center justify-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Available until: {format(examDetails.expiryDate.toDate(), "PPP")}
+                  </p>
+             </div>
+          )}
+          {isExpired && (
+            <div className="bg-destructive/10 text-destructive border border-destructive p-3 rounded-md text-sm flex items-center gap-2 mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <p>This exam has expired and can no longer be taken.</p>
+            </div>
+          )}
           <form onSubmit={startExam} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
-                  <Input id="fullName" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} />
+                  <Input id="fullName" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} disabled={isExpired}/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="john.doe@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
+                  <Input id="email" type="email" placeholder="john.doe@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isExpired}/>
                 </div>
                  <div className="space-y-2">
                   <Label htmlFor="collegeName" className="flex items-center"><School className="mr-2 h-4 w-4"/>College Name</Label>
-                  <Input id="collegeName" placeholder="University of Example" required value={collegeName} onChange={e => setCollegeName(e.target.value)} />
+                  <Input id="collegeName" placeholder="University of Example" required value={collegeName} onChange={e => setCollegeName(e.target.value)} disabled={isExpired}/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="passingYear" className="flex items-center"><Calendar className="mr-2 h-4 w-4"/>Passing Year</Label>
-                  <Input id="passingYear" type="number" placeholder="e.g. 2025" required value={passingYear} onChange={e => setPassingYear(e.target.value)} />
+                  <Input id="passingYear" type="number" placeholder="e.g. 2025" required value={passingYear} onChange={e => setPassingYear(e.target.value)} disabled={isExpired}/>
                 </div>
             </div>
             
             <div className="items-top flex space-x-2 pt-2">
-              <Checkbox id="terms" required/>
+              <Checkbox id="terms" required disabled={isExpired}/>
               <div className="grid gap-1.5 leading-none">
                 <label
                   htmlFor="terms"
@@ -184,8 +205,8 @@ export default function ExamTakerDetailsPage() {
                 </p>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading || isChecking}>
-              {isChecking ? 'Verifying...' : 'Start Exam'}
+            <Button type="submit" className="w-full" disabled={loading || isChecking || isExpired}>
+              {isExpired ? 'Exam Expired' : (isChecking ? 'Verifying...' : 'Start Exam')}
             </Button>
           </form>
         </CardContent>
@@ -193,3 +214,5 @@ export default function ExamTakerDetailsPage() {
     </div>
   );
 }
+
+    

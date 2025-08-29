@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { format } from "date-fns";
 import {
   File,
   PlusCircle,
@@ -12,7 +13,8 @@ import {
   Repeat,
   AlertCircle,
   ArrowLeft,
-  Tag
+  Tag,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,7 +48,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 
 interface Question {
   id: string;
@@ -70,6 +75,7 @@ export default function EditExamPage() {
   const [timeLimit, setTimeLimit] = useState(30);
   const [allowedAttempts, setAllowedAttempts] = useState(1);
   const [perQuestionTimer, setPerQuestionTimer] = useState(false);
+  const [expiryDate, setExpiryDate] = useState<Date>();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -93,6 +99,9 @@ export default function EditExamPage() {
                 setTimeLimit(data.timeLimit || 30);
                 setAllowedAttempts(data.allowedAttempts || 1);
                 setPerQuestionTimer(data.perQuestionTimer || false);
+                if (data.expiryDate) {
+                  setExpiryDate((data.expiryDate as Timestamp).toDate());
+                }
             } else {
                 toast({ variant: "destructive", title: "Error", description: "Exam not found." });
                 router.push('/dashboard');
@@ -205,6 +214,7 @@ export default function EditExamPage() {
             timeLimit: perQuestionTimer ? null : timeLimit,
             perQuestionTimer,
             allowedAttempts,
+            expiryDate: expiryDate || null,
             updatedAt: serverTimestamp(),
         };
         await updateDoc(examRef, examData);
@@ -364,6 +374,31 @@ export default function EditExamPage() {
                     <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>
                     <Input id="attempts" type="number" placeholder="e.g. 1" value={allowedAttempts} onChange={e => setAllowedAttempts(Number(e.target.value))} min="1"/>
                 </div>
+                 <div className="grid gap-3">
+                    <Label htmlFor="expiry" className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4"/>Expiry Date</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !expiryDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={expiryDate}
+                            onSelect={setExpiryDate}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-destructive/10 border-destructive">
@@ -458,3 +493,5 @@ function AiQuestionGenerator({ onGenerate, isGenerating }: { onGenerate: (topic:
     </Dialog>
   );
 }
+
+    

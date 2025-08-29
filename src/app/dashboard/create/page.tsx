@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from "date-fns";
 import {
   File,
   PlusCircle,
@@ -11,7 +12,8 @@ import {
   Clock,
   Repeat,
   AlertCircle,
-  Tag
+  Tag,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -59,6 +61,9 @@ import { generateExamQuestions } from '@/ai/flows/generate-exam-questions';
 import { generateExamDescription } from '@/ai/flows/generate-exam-description';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 
 interface Question {
   id: string;
@@ -79,6 +84,7 @@ export default function CreateExamPage() {
   const [timeLimit, setTimeLimit] = useState(30); // Default 30 minutes
   const [allowedAttempts, setAllowedAttempts] = useState(1); // Default 1 attempt
   const [perQuestionTimer, setPerQuestionTimer] = useState(false);
+  const [expiryDate, setExpiryDate] = useState<Date>();
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -209,6 +215,7 @@ export default function CreateExamPage() {
             timeLimit: perQuestionTimer ? null : timeLimit,
             perQuestionTimer,
             allowedAttempts,
+            expiryDate: expiryDate || null,
             createdAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), examData);
@@ -369,6 +376,31 @@ export default function CreateExamPage() {
                     <Label htmlFor="attempts" className="flex items-center"><Repeat className="mr-2 h-4 w-4"/>Allowed Attempts</Label>
                     <Input id="attempts" type="number" placeholder="e.g. 1" value={allowedAttempts} onChange={e => setAllowedAttempts(Number(e.target.value))} min="1"/>
                 </div>
+                <div className="grid gap-3">
+                    <Label htmlFor="expiry" className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4"/>Expiry Date</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !expiryDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={expiryDate}
+                            onSelect={setExpiryDate}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-destructive/10 border-destructive">
@@ -463,3 +495,5 @@ function AiQuestionGenerator({ onGenerate, isGenerating }: { onGenerate: (topic:
     </Dialog>
   );
 }
+
+    
