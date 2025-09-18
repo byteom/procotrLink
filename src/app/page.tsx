@@ -10,6 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Logo } from '@/components/ui/logo';
 
 export default function Home() {
   return (
@@ -17,11 +18,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
             <Link href="/" className="flex items-center justify-center" prefetch={false}>
-              <GraduationCap className="h-6 w-6 text-brand-primary" />
-              <div className="ml-2 flex flex-col">
-                <span className="text-xl font-bold font-headline text-brand-dark">ProctorLink</span>
-                <span className="text-xs text-brand-medium/80 font-medium -mt-1">Powered by LogikSutra AI Recruitment</span>
-              </div>
+              <Logo size="md" />
             </Link>
             <nav className="ml-auto hidden items-center gap-4 sm:flex">
                 <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">Features</Link>
