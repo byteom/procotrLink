@@ -23,6 +23,8 @@ interface ExamDetails {
     perQuestionTimer: boolean;
     allowedAttempts: number;
     expiryDate?: Timestamp;
+    restrictToEmails?: boolean;
+    allowedEmails?: string[];
 }
 
 export default function ExamTakerDetailsPage() {
@@ -85,6 +87,21 @@ export default function ExamTakerDetailsPage() {
     
     setIsChecking(true);
     try {
+        // Check if email restriction is enabled and validate email
+        if (examDetails.restrictToEmails && examDetails.allowedEmails) {
+            const normalizedEmail = email.toLowerCase().trim();
+            const allowedEmailsList = examDetails.allowedEmails.map(e => e.toLowerCase().trim());
+            
+            if (!allowedEmailsList.includes(normalizedEmail)) {
+                toast({
+                    variant: "destructive",
+                    title: "Access Denied",
+                    description: "Your email address is not authorized to take this exam. Please contact the exam administrator.",
+                });
+                return;
+            }
+        }
+
         const submissionsRef = collection(db, "submissions");
         const q = query(submissionsRef, where("examId", "==", examId), where("participantEmail", "==", email));
         const querySnapshot = await getCountFromServer(q);
@@ -104,7 +121,7 @@ export default function ExamTakerDetailsPage() {
         localStorage.setItem('proctorlink-participant-email', email);
         localStorage.setItem('proctorlink-participant-college', collegeName);
         localStorage.setItem('proctorlink-participant-year', passingYear);
-        router.push(`/exam/${examId}/take`);
+        router.push(`/exam/${examId}/verify`);
         
     } catch (error) {
         console.error("Error checking for previous submissions:", error);
@@ -119,11 +136,15 @@ export default function ExamTakerDetailsPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-           <div className="flex justify-center mb-4">
-            <GraduationCap className="w-12 h-12 text-primary" />
+    <div className="min-h-screen bg-gradient-to-br from-brand-light/20 via-brand-medium/10 to-brand-primary/5 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden">
+        <CardHeader className="text-center bg-gradient-to-r from-brand-primary to-brand-dark text-white py-8">
+           <div className="flex flex-col items-center mb-4">
+            <GraduationCap className="w-16 h-16 text-white drop-shadow-lg mb-2" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">ProctorLink</div>
+              <div className="text-xs text-brand-light/90 font-medium">Powered by LogikSutra AI Recruitment</div>
+            </div>
           </div>
           {loading ? (
               <div className="space-y-2">
@@ -133,83 +154,145 @@ export default function ExamTakerDetailsPage() {
               </div>
           ) : (
             <>
-                <CardTitle className="text-2xl">{examDetails?.title}</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-3xl font-bold text-white drop-shadow-md">{examDetails?.title}</CardTitle>
+                <CardDescription className="text-blue-100 text-lg mt-2">
                     {examDetails?.description || 'Please enter your details to begin the exam.'}
                 </CardDescription>
             </>
           )}
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center mb-6 border-y py-4">
-             <div>
-                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><Clock className="w-4 h-4"/> Time</dt>
-                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : (
+        <CardContent className="p-8">
+          <div className="grid grid-cols-3 gap-6 text-center mb-8">
+             <div className="bg-gradient-to-br from-brand-light/30 to-brand-medium/20 p-4 rounded-xl border border-brand-medium/30">
+                <dt className="flex items-center justify-center gap-1 text-sm font-medium text-brand-dark mb-2">
+                  <Clock className="w-5 h-5"/> Time Limit
+                </dt>
+                <dd className="text-xl font-bold text-brand-dark">{loading ? <Skeleton className="h-6 w-16 mx-auto" /> : (
                     examDetails?.perQuestionTimer ? "Per Question" : `${examDetails?.timeLimit} mins`
                 )}</dd>
              </div>
-             <div>
-                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><HelpCircle className="w-4 h-4"/> Questions</dt>
-                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.questions.length}`}</dd>
+             <div className="bg-gradient-to-br from-brand-medium/30 to-brand-primary/20 p-4 rounded-xl border border-brand-primary/30">
+                <dt className="flex items-center justify-center gap-1 text-sm font-medium text-brand-dark mb-2">
+                  <HelpCircle className="w-5 h-5"/> Questions
+                </dt>
+                <dd className="text-xl font-bold text-brand-dark">{loading ? <Skeleton className="h-6 w-16 mx-auto" /> : `${examDetails?.questions.length}`}</dd>
              </div>
-             <div>
-                <dt className="flex items-center justify-center gap-1 text-sm text-muted-foreground"><Repeat className="w-4 h-4"/> Attempts</dt>
-                <dd className="font-semibold">{loading ? <Skeleton className="h-5 w-12 mx-auto mt-1" /> : `${examDetails?.allowedAttempts}`}</dd>
+             <div className="bg-gradient-to-br from-brand-primary/30 to-brand-dark/20 p-4 rounded-xl border border-brand-dark/30">
+                <dt className="flex items-center justify-center gap-1 text-sm font-medium text-brand-dark mb-2">
+                  <Repeat className="w-5 h-5"/> Attempts
+                </dt>
+                <dd className="text-xl font-bold text-brand-dark">{loading ? <Skeleton className="h-6 w-16 mx-auto" /> : `${examDetails?.allowedAttempts}`}</dd>
              </div>
           </div>
           {examDetails?.expiryDate && (
-             <div className="text-center text-sm text-muted-foreground mb-4">
-                  <p className="flex items-center justify-center gap-2">
-                    <Calendar className="w-4 h-4" />
+             <div className="text-center bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                  <p className="flex items-center justify-center gap-2 text-amber-800 font-medium">
+                    <Calendar className="w-5 h-5" />
                     Available until: {format(examDetails.expiryDate.toDate(), "PPP")}
                   </p>
              </div>
           )}
           {isExpired && (
-            <div className="bg-destructive/10 text-destructive border border-destructive p-3 rounded-md text-sm flex items-center gap-2 mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <p>This exam has expired and can no longer be taken.</p>
+            <div className="bg-red-50 text-red-800 border border-red-200 p-4 rounded-lg text-sm flex items-center gap-2 mb-6">
+                <AlertTriangle className="h-5 w-5" />
+                <p className="font-medium">This exam has expired and can no longer be taken.</p>
             </div>
           )}
-          <form onSubmit={startExam} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input id="fullName" placeholder="John Doe" required value={fullName} onChange={e => setFullName(e.target.value)} disabled={isExpired}/>
+          <form onSubmit={startExam} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">Full Name</Label>
+                  <Input 
+                    id="fullName" 
+                    placeholder="Enter your full name" 
+                    required 
+                    value={fullName} 
+                    onChange={e => setFullName(e.target.value)} 
+                    disabled={isExpired}
+                    className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="john.doe@example.com" required value={email} onChange={e => setEmail(e.target.value)} disabled={isExpired}/>
+                <div className="space-y-3">
+                  <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="your.email@example.com" 
+                    required 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    disabled={isExpired}
+                    className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
                 </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="collegeName" className="flex items-center"><School className="mr-2 h-4 w-4"/>College Name</Label>
-                  <Input id="collegeName" placeholder="University of Example" required value={collegeName} onChange={e => setCollegeName(e.target.value)} disabled={isExpired}/>
+                 <div className="space-y-3">
+                  <Label htmlFor="collegeName" className="flex items-center text-sm font-semibold text-gray-700">
+                    <School className="mr-2 h-4 w-4 text-blue-600"/>College/University
+                  </Label>
+                  <Input 
+                    id="collegeName" 
+                    placeholder="Your institution name" 
+                    required 
+                    value={collegeName} 
+                    onChange={e => setCollegeName(e.target.value)} 
+                    disabled={isExpired}
+                    className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="passingYear" className="flex items-center"><Calendar className="mr-2 h-4 w-4"/>Passing Year</Label>
-                  <Input id="passingYear" type="number" placeholder="e.g. 2025" required value={passingYear} onChange={e => setPassingYear(e.target.value)} disabled={isExpired}/>
+                <div className="space-y-3">
+                  <Label htmlFor="passingYear" className="flex items-center text-sm font-semibold text-gray-700">
+                    <Calendar className="mr-2 h-4 w-4 text-blue-600"/>Graduation Year
+                  </Label>
+                  <Input 
+                    id="passingYear" 
+                    type="number" 
+                    placeholder="e.g. 2025" 
+                    required 
+                    value={passingYear} 
+                    onChange={e => setPassingYear(e.target.value)} 
+                    disabled={isExpired}
+                    className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
                 </div>
             </div>
             
-            <div className="items-top flex space-x-2 pt-2">
-              <Checkbox id="terms" required disabled={isExpired}/>
-              <div className="grid gap-1.5 leading-none">
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Agree to terms and conditions
-                </label>
-                <p className="text-sm text-muted-foreground">
-                  You agree to our exam policies, including camera monitoring and anti-cheating measures.
-                </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
+              <div className="flex items-start space-x-3">
+                <Checkbox id="terms" required disabled={isExpired} className="mt-1"/>
+                <div className="grid gap-2 leading-none">
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-semibold text-gray-800 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I agree to the exam terms and conditions
+                  </label>
+                  <p className="text-sm text-gray-600">
+                    By proceeding, you consent to camera monitoring, screen recording, and our anti-cheating measures during the exam.
+                  </p>
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-xs text-brand-primary/80 font-medium text-center bg-brand-light/20 px-2 py-1 rounded">
+                      🔒 Secured by LogikSutra AI Recruitment Technology
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading || isChecking || isExpired}>
-              {isExpired ? 'Exam Expired' : (isChecking ? 'Verifying...' : 'Start Exam')}
+            <Button 
+              type="submit" 
+              className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-primary/90 hover:to-brand-dark/90 transition-all duration-200 shadow-lg hover:shadow-xl" 
+              disabled={loading || isChecking || isExpired}
+            >
+              {isExpired ? 'Exam Expired' : (isChecking ? 'Verifying...' : 'Proceed to Verification')}
             </Button>
           </form>
         </CardContent>
+        <div className="border-t bg-gray-50 px-8 py-4 rounded-b-lg">
+          <div className="text-center">
+            <p className="text-xs text-brand-medium/80 font-medium">
+              ⚡ Powered by LogikSutra AI Recruitment - Intelligent Proctoring System
+            </p>
+          </div>
+        </div>
       </Card>
     </div>
   );

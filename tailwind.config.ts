@@ -22,6 +22,13 @@ export default {
         code: ['monospace'],
       },
       colors: {
+        // Custom brand colors
+        brand: {
+          'dark': '#1A2A80',      // Primary dark blue
+          'primary': '#3B38A0',    // Primary purple-blue
+          'medium': '#7A85C1',     // Medium blue-purple
+          'light': '#B2B0E8',      // Light lavender
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

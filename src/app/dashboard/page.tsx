@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, PlusCircle, Link2, Tag } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Link2, Tag, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -24,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, Timestamp, where,getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +51,7 @@ interface Exam {
 export default function Dashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -102,6 +114,31 @@ export default function Dashboard() {
     });
   };
 
+  const handleDeleteExam = async (examId: string) => {
+    setDeletingExamId(examId);
+    try {
+      // Delete the exam document from Firestore
+      await deleteDoc(doc(db, "exams", examId));
+      
+      // Remove the exam from the local state
+      setExams(prevExams => prevExams.filter(exam => exam.id !== examId));
+      
+      toast({
+        title: "Exam Deleted!",
+        description: "The exam has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting exam: ", error);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "There was an error deleting the exam. Please try again.",
+      });
+    } finally {
+      setDeletingExamId(null);
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading exams...</div>
@@ -109,17 +146,22 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">My Exams</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <Button asChild size="sm" className="h-8 gap-1">
-            <Link href="/dashboard/create">
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Create Exam
-              </span>
-            </Link>
-          </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center">
+          <h1 className="text-lg font-semibold md:text-2xl">My Exams</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild size="sm" className="h-8 gap-1">
+              <Link href="/dashboard/create">
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Create Exam
+                </span>
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="text-xs text-brand-primary/80 font-medium bg-brand-light/20 px-3 py-1 rounded-full inline-block w-fit">
+          🚀 Powered by LogikSutra AI Recruitment - Advanced Exam Management
         </div>
       </div>
       <Card>
@@ -128,6 +170,9 @@ export default function Dashboard() {
           <CardDescription>
             Manage your exams and view their status.
           </CardDescription>
+          <div className="text-xs text-brand-primary/70 font-medium bg-brand-light/10 px-2 py-1 rounded inline-block w-fit">
+            📊 LogikSutra AI Analytics
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -179,9 +224,33 @@ export default function Dashboard() {
                             Copy Link
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            Delete
-                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the exam "{exam.title}" 
+                                  and remove all associated data including participant submissions.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteExam(exam.id)}
+                                  disabled={deletingExamId === exam.id}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {deletingExamId === exam.id ? "Deleting..." : "Delete"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Tag,
   Calendar as CalendarIcon,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,6 +78,10 @@ export default function EditExamPage() {
   const [perQuestionTimer, setPerQuestionTimer] = useState(false);
   const [expiryDate, setExpiryDate] = useState<Date>();
   
+  // Access Control Settings
+  const [restrictToEmails, setRestrictToEmails] = useState(false);
+  const [allowedEmails, setAllowedEmails] = useState('');
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +104,8 @@ export default function EditExamPage() {
                 setTimeLimit(data.timeLimit || 30);
                 setAllowedAttempts(data.allowedAttempts || 1);
                 setPerQuestionTimer(data.perQuestionTimer || false);
+                setRestrictToEmails(data.restrictToEmails || false);
+                setAllowedEmails((data.allowedEmails || []).join(', '));
                 if (data.expiryDate) {
                   setExpiryDate((data.expiryDate as Timestamp).toDate());
                 }
@@ -215,6 +222,8 @@ export default function EditExamPage() {
             perQuestionTimer,
             allowedAttempts,
             expiryDate: expiryDate || null,
+            restrictToEmails,
+            allowedEmails: restrictToEmails ? allowedEmails.split(',').map(email => email.trim()).filter(Boolean) : [],
             updatedAt: serverTimestamp(),
         };
         await updateDoc(examRef, examData);
@@ -247,9 +256,12 @@ export default function EditExamPage() {
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Button>
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            Edit Exam
-          </h1>
+          <div className="flex-1 flex flex-col">
+            <h1 className="text-xl font-semibold tracking-tight">Edit Exam</h1>
+            <div className="text-xs text-brand-primary/80 font-medium">
+              🛠️ Powered by LogikSutra AI Recruitment
+            </div>
+          </div>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
             <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
               Cancel
@@ -399,6 +411,34 @@ export default function EditExamPage() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                
+                {/* Access Control Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <UserCheck className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm font-medium">Access Control</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Switch id="restrict-emails" checked={restrictToEmails} onCheckedChange={setRestrictToEmails} />
+                    <Label htmlFor="restrict-emails">Restrict to specific emails</Label>
+                  </div>
+                  {restrictToEmails && (
+                    <div className="grid gap-3">
+                      <Label htmlFor="allowed-emails" className="text-sm">Allowed Email Addresses</Label>
+                      <Textarea
+                        id="allowed-emails"
+                        placeholder="Enter email addresses separated by commas&#10;e.g. john@example.com, jane@example.com"
+                        value={allowedEmails}
+                        onChange={(e) => setAllowedEmails(e.target.value)}
+                        rows={3}
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Only users with these email addresses will be able to take this exam.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-destructive/10 border-destructive">
@@ -439,7 +479,7 @@ function AiQuestionGenerator({ onGenerate, isGenerating }: { onGenerate: (topic:
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" className="w-full bg-accent hover:bg-accent/90">
+        <Button variant="default" className="w-full bg-brand-medium hover:bg-brand-primary text-white">
             <Wand2 className="mr-2 h-4 w-4" /> Generate with AI
         </Button>
       </DialogTrigger>

@@ -64,8 +64,11 @@ export default function DashboardLayout({
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold" prefetch={false}>
-              <GraduationCap className="h-6 w-6 text-primary" />
-              <span className="">ProctorLink</span>
+              <GraduationCap className="h-6 w-6 text-brand-primary" />
+              <div className="flex flex-col">
+                <span className="text-brand-dark font-bold">ProctorLink</span>
+                <span className="text-xs text-brand-medium/80 font-medium -mt-1">Powered by LogikSutra AI</span>
+              </div>
             </Link>
           </div>
           <div className="flex-1">
@@ -142,8 +145,11 @@ export default function DashboardLayout({
                   href="#"
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
-                  <GraduationCap className="h-6 w-6 text-primary" />
-                  <span className="sr-only">ProctorLink</span>
+                  <GraduationCap className="h-6 w-6 text-brand-primary" />
+                  <div className="flex flex-col">
+                    <span className="text-brand-dark font-bold">ProctorLink</span>
+                    <span className="text-xs text-brand-medium/80 font-medium -mt-1">LogikSutra AI</span>
+                  </div>
                 </Link>
                 <Link
                   href="/dashboard"

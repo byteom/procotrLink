@@ -17,8 +17,11 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
             <Link href="/" className="flex items-center justify-center" prefetch={false}>
-              <GraduationCap className="h-6 w-6 text-primary" />
-              <span className="ml-2 text-xl font-bold font-headline">ProctorLink</span>
+              <GraduationCap className="h-6 w-6 text-brand-primary" />
+              <div className="ml-2 flex flex-col">
+                <span className="text-xl font-bold font-headline text-brand-dark">ProctorLink</span>
+                <span className="text-xs text-brand-medium/80 font-medium -mt-1">Powered by LogikSutra AI Recruitment</span>
+              </div>
             </Link>
             <nav className="ml-auto hidden items-center gap-4 sm:flex">
                 <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">Features</Link>
@@ -46,7 +49,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+                  <Button asChild size="lg" className="bg-brand-primary hover:bg-brand-dark text-white">
                     <Link href="/dashboard/create">Create Your First Exam</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
@@ -326,16 +329,30 @@ export default function Home() {
         </section>
 
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-card">
-        <p className="text-xs text-muted-foreground">&copy; 2024 ProctorLink. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="/legal/terms" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Terms of Service
-          </Link>
-          <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Privacy
-          </Link>
-        </nav>
+      <footer className="flex flex-col gap-3 py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-card">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-brand-primary" />
+            <span className="text-sm font-semibold text-brand-dark">ProctorLink</span>
+          </div>
+          <p className="text-xs text-brand-medium font-medium">Powered by LogikSutra AI Recruitment</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center w-full">
+          <p className="text-xs text-muted-foreground">&copy; 2024 ProctorLink. All rights reserved.</p>
+          <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+            <Link href="/legal/terms" className="text-xs hover:underline underline-offset-4" prefetch={false}>
+              Terms of Service
+            </Link>
+            <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4" prefetch={false}>
+              Privacy
+            </Link>
+          </nav>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-brand-primary/80 font-medium bg-brand-light/20 px-3 py-1 rounded-full">
+            🚀 Powered by LogikSutra AI Recruitment - Advanced Proctoring Solutions
+          </p>
+        </div>
       </footer>
     </div>
   );

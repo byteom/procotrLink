@@ -13,7 +13,8 @@ import {
   Repeat,
   AlertCircle,
   Tag,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  UserCheck
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -85,6 +86,10 @@ export default function CreateExamPage() {
   const [allowedAttempts, setAllowedAttempts] = useState(1); // Default 1 attempt
   const [perQuestionTimer, setPerQuestionTimer] = useState(false);
   const [expiryDate, setExpiryDate] = useState<Date>();
+  
+  // Access Control Settings
+  const [restrictToEmails, setRestrictToEmails] = useState(false);
+  const [allowedEmails, setAllowedEmails] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -216,6 +221,8 @@ export default function CreateExamPage() {
             perQuestionTimer,
             allowedAttempts,
             expiryDate: expiryDate || null,
+            restrictToEmails,
+            allowedEmails: restrictToEmails ? allowedEmails.split(',').map(email => email.trim()).filter(Boolean) : [],
             createdAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), examData);
@@ -242,17 +249,22 @@ export default function CreateExamPage() {
   return (
     <div className="grid flex-1 items-start gap-4 sm:py-0">
       <div className="mx-auto grid w-full max-w-5xl flex-1 auto-rows-max gap-4">
-        <div className="flex items-center gap-4">
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            Exam Builder
-          </h1>
-          <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
-              Discard
-            </Button>
-            <Button size="sm" onClick={saveExam} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Exam'}
-            </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
+              Exam Builder
+            </h1>
+            <div className="hidden items-center gap-2 md:ml-auto md:flex">
+              <Button variant="outline" size="sm" onClick={() => router.push('/dashboard')}>
+                Discard
+              </Button>
+              <Button size="sm" onClick={saveExam} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Exam'}
+              </Button>
+            </div>
+          </div>
+          <div className="text-xs text-brand-primary/80 font-medium bg-brand-light/20 px-3 py-1 rounded-full inline-block w-fit">
+            🤖 Powered by LogikSutra AI Recruitment - Intelligent Exam Creation
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
@@ -401,6 +413,34 @@ export default function CreateExamPage() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                
+                {/* Access Control Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <UserCheck className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm font-medium">Access Control</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Switch id="restrict-emails" checked={restrictToEmails} onCheckedChange={setRestrictToEmails} />
+                    <Label htmlFor="restrict-emails">Restrict to specific emails</Label>
+                  </div>
+                  {restrictToEmails && (
+                    <div className="grid gap-3">
+                      <Label htmlFor="allowed-emails" className="text-sm">Allowed Email Addresses</Label>
+                      <Textarea
+                        id="allowed-emails"
+                        placeholder="Enter email addresses separated by commas&#10;e.g. john@example.com, jane@example.com"
+                        value={allowedEmails}
+                        onChange={(e) => setAllowedEmails(e.target.value)}
+                        rows={3}
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Only users with these email addresses will be able to take this exam.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-destructive/10 border-destructive">
@@ -441,7 +481,7 @@ function AiQuestionGenerator({ onGenerate, isGenerating }: { onGenerate: (topic:
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" className="w-full bg-accent hover:bg-accent/90">
+        <Button variant="default" className="w-full bg-brand-medium hover:bg-brand-primary text-white">
             <Wand2 className="mr-2 h-4 w-4" /> Generate with AI
         </Button>
       </DialogTrigger>
