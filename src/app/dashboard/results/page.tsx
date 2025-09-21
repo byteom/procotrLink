@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Search, X } from 'lucide-react';
+import { Download, Search, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { exportToExcel } from '@/lib/utils';
@@ -21,9 +21,11 @@ interface Submission {
   collegeName: string;
   passingYear: string;
   score: string;
+  rawScore: number;
   totalQuestions: number;
   status: 'Completed'; // Assuming all fetched are completed
   submittedAt: string;
+  submittedAtDate: Date;
 }
 
 function ResultsContent() {
@@ -36,6 +38,8 @@ function ResultsContent() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedYear, setSelectedYear] = useState<string>('all');
+    const [sortField, setSortField] = useState<keyof Submission>('submittedAtDate');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
     // Get unique passing years for filter dropdown
     const uniqueYears = Array.from(new Set(submissions.map(s => s.passingYear))).sort();
@@ -56,7 +60,25 @@ function ResultsContent() {
         setSelectedYear('all');
     };
 
-    // Filter submissions based on search term and selected year
+    const handleSort = (field: keyof Submission) => {
+        if (field === sortField) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const getSortIcon = (field: keyof Submission) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4" />;
+        }
+        return sortDirection === 'asc' ? 
+            <ArrowUp className="h-4 w-4" /> : 
+            <ArrowDown className="h-4 w-4" />;
+    };
+
+    // Filter and sort submissions
     useEffect(() => {
         let filtered = submissions;
 
@@ -74,8 +96,47 @@ function ResultsContent() {
             filtered = filtered.filter(submission => submission.passingYear === selectedYear);
         }
 
+        // Sort submissions
+        filtered.sort((a, b) => {
+            let aValue: any;
+            let bValue: any;
+
+            switch (sortField) {
+                case 'rawScore':
+                    aValue = a.rawScore;
+                    bValue = b.rawScore;
+                    break;
+                case 'submittedAtDate':
+                    aValue = a.submittedAtDate.getTime();
+                    bValue = b.submittedAtDate.getTime();
+                    break;
+                case 'passingYear':
+                    aValue = parseInt(a.passingYear) || 0;
+                    bValue = parseInt(b.passingYear) || 0;
+                    break;
+                case 'participantName':
+                case 'participantEmail':
+                case 'collegeName':
+                case 'status':
+                    aValue = a[sortField].toLowerCase();
+                    bValue = b[sortField].toLowerCase();
+                    break;
+                default:
+                    aValue = a[sortField];
+                    bValue = b[sortField];
+            }
+
+            if (aValue < bValue) {
+                return sortDirection === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+
         setFilteredSubmissions(filtered);
-    }, [submissions, searchTerm, selectedYear]);
+    }, [submissions, searchTerm, selectedYear, sortField, sortDirection]);
 
     useEffect(() => {
         if (!examId) {
@@ -94,6 +155,7 @@ function ResultsContent() {
                 const resultsData = querySnapshot.docs.map(doc => {
                     const data = doc.data();
                     const submittedAt = data.submittedAt as Timestamp;
+                    const submittedDate = submittedAt ? submittedAt.toDate() : new Date();
                     return {
                         id: doc.id,
                         participantName: data.participantName,
@@ -101,9 +163,11 @@ function ResultsContent() {
                         collegeName: data.collegeName,
                         passingYear: data.passingYear,
                         score: `${data.score}/${data.totalQuestions}`,
+                        rawScore: data.score || 0,
                         totalQuestions: data.totalQuestions,
                         status: 'Completed',
-                        submittedAt: submittedAt ? submittedAt.toDate().toLocaleString() : 'N/A',
+                        submittedAt: submittedDate.toLocaleString(),
+                        submittedAtDate: submittedDate,
                     } as Submission;
                 });
                 setSubmissions(resultsData);
@@ -179,6 +243,29 @@ function ResultsContent() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="sm:w-48">
+                                <Select value={`${sortField}-${sortDirection}`} onValueChange={(value) => {
+                                    const [field, direction] = value.split('-') as [keyof Submission, 'asc' | 'desc'];
+                                    setSortField(field);
+                                    setSortDirection(direction);
+                                }}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sort by" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="submittedAtDate-desc">📅 Newest First</SelectItem>
+                                        <SelectItem value="submittedAtDate-asc">📅 Oldest First</SelectItem>
+                                        <SelectItem value="rawScore-desc">🏆 Highest Score</SelectItem>
+                                        <SelectItem value="rawScore-asc">📊 Lowest Score</SelectItem>
+                                        <SelectItem value="participantName-asc">👤 Name A-Z</SelectItem>
+                                        <SelectItem value="participantName-desc">👤 Name Z-A</SelectItem>
+                                        <SelectItem value="collegeName-asc">🏫 College A-Z</SelectItem>
+                                        <SelectItem value="collegeName-desc">🏫 College Z-A</SelectItem>
+                                        <SelectItem value="passingYear-desc">🎓 Recent Year</SelectItem>
+                                        <SelectItem value="passingYear-asc">🎓 Earlier Year</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             {(searchTerm || selectedYear !== 'all') && (
                                 <Button
                                     onClick={clearFilters}
@@ -208,13 +295,69 @@ function ResultsContent() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Participant Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>College</TableHead>
-                                    <TableHead>Passing Year</TableHead>
-                                    <TableHead>Score</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Submitted At</TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('participantName')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Participant Name
+                                            {getSortIcon('participantName')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('participantEmail')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Email
+                                            {getSortIcon('participantEmail')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('collegeName')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            College
+                                            {getSortIcon('collegeName')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('passingYear')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Passing Year
+                                            {getSortIcon('passingYear')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('rawScore')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Score
+                                            {getSortIcon('rawScore')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('status')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Status
+                                            {getSortIcon('status')}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="cursor-pointer hover:bg-gray-50 select-none"
+                                        onClick={() => handleSort('submittedAtDate')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Submitted At
+                                            {getSortIcon('submittedAtDate')}
+                                        </div>
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

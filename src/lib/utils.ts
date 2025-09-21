@@ -12,8 +12,10 @@ interface ExportData {
   collegeName: string;
   passingYear: string;
   score: string;
+  rawScore: number;
   totalQuestions: number;
   submittedAt: string;
+  submittedAtDate: Date;
 }
 
 export function exportToExcel(data: ExportData[], filename: string = 'exam-results') {
