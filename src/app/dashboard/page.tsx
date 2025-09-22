@@ -5,7 +5,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, PlusCircle, Link2, Tag, Trash2, Pause, Play } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { MoreHorizontal, PlusCircle, Link2, Tag, Trash2, Pause, Play, Copy } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +29,15 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -35,7 +47,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc, deleteDoc, updateDoc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,6 +66,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [pausingExamId, setPausingExamId] = useState<string | null>(null);
+  const [copyingExamId, setCopyingExamId] = useState<string | null>(null);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [examToCopy, setExamToCopy] = useState<Exam | null>(null);
+  const [copyFormData, setCopyFormData] = useState({
+    title: '',
+    description: '',
+    tags: ''
+  });
   const router = useRouter();
   const { toast } = useToast();
 
@@ -180,6 +200,97 @@ export default function Dashboard() {
     }
   };
 
+  const handleCopyExam = (exam: Exam) => {
+    setExamToCopy(exam);
+    setCopyFormData({
+      title: `${exam.title} (Copy)`,
+      description: '', // Will be filled from the original exam data
+      tags: exam.tags?.join(', ') || ''
+    });
+    setCopyDialogOpen(true);
+  };
+
+  const handleCopySubmit = async () => {
+    if (!examToCopy) return;
+    
+    setCopyingExamId(examToCopy.id);
+    try {
+      // Fetch the complete exam data including questions
+      const examRef = doc(db, "exams", examToCopy.id);
+      const examSnap = await getDoc(examRef);
+      
+      if (!examSnap.exists()) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not find the original exam data.",
+        });
+        return;
+      }
+
+      const originalExamData = examSnap.data();
+      
+      // Create the copied exam data
+      const copiedExamData = {
+        ...originalExamData,
+        title: copyFormData.title || `${examToCopy.title} (Copy)`,
+        description: copyFormData.description || originalExamData.description || '',
+        tags: copyFormData.tags ? copyFormData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : (examToCopy.tags || []),
+        createdAt: serverTimestamp(),
+        isPaused: false, // New copy starts as active
+      };
+
+      // Remove fields that shouldn't be copied (Firebase doesn't allow undefined values)
+      delete copiedExamData.updatedAt;
+      delete copiedExamData.pausedAt;
+
+      // Add the new exam to Firestore
+      const newExamRef = await addDoc(collection(db, "exams"), copiedExamData);
+      
+      // Refresh the exams list
+      const examsQuery = query(collection(db, "exams"), orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(examsQuery);
+      
+      const examsData = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const exam = {
+          id: doc.id,
+          ...doc.data()
+        } as Omit<Exam, 'status' | 'participants'> & { id: string, createdAt: Timestamp };
+
+        // Fetch participant count
+        const submissionsQuery = query(collection(db, "submissions"), where("examId", "==", doc.id));
+        const submissionsSnapshot = await getCountFromServer(submissionsQuery);
+        const participants = submissionsSnapshot.data().count;
+
+        return {
+          ...exam,
+          participants,
+          status: 'Published',
+          isPaused: exam.isPaused || false,
+        } as Exam;
+      }));
+
+      setExams(examsData);
+      setCopyDialogOpen(false);
+      setExamToCopy(null);
+      
+      toast({
+        title: "Exam Copied Successfully!",
+        description: `"${copyFormData.title}" has been created as a copy of the original exam.`,
+      });
+      
+    } catch (error) {
+      console.error("Error copying exam: ", error);
+      toast({
+        variant: "destructive",
+        title: "Copy Failed",
+        description: "There was an error copying the exam. Please try again.",
+      });
+    } finally {
+      setCopyingExamId(null);
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading exams...</div>
@@ -288,6 +399,11 @@ export default function Dashboard() {
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleCopyExam(exam)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Exam
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
@@ -325,6 +441,81 @@ export default function Dashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Copy Exam Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Copy Exam
+            </DialogTitle>
+            <DialogDescription>
+              Create a copy of "{examToCopy?.title}". You can modify the details below or keep them the same.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="copy-title">Exam Title</Label>
+              <Input
+                id="copy-title"
+                value={copyFormData.title}
+                onChange={(e) => setCopyFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter exam title"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="copy-description">Description (Optional)</Label>
+              <Textarea
+                id="copy-description"
+                value={copyFormData.description}
+                onChange={(e) => setCopyFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Leave empty to use original description"
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="copy-tags">Tags (Optional)</Label>
+              <Input
+                id="copy-tags"
+                value={copyFormData.tags}
+                onChange={(e) => setCopyFormData(prev => ({ ...prev, tags: e.target.value }))}
+                placeholder="Enter tags separated by commas"
+              />
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">What will be copied:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>✓ All questions and answers</li>
+                <li>✓ Time limits and settings</li>
+                <li>✓ Allowed attempts configuration</li>
+                <li>✓ Email restrictions (if any)</li>
+                <li>✓ All exam instructions</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCopyDialogOpen(false)}
+              disabled={copyingExamId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCopySubmit}
+              disabled={copyingExamId !== null || !copyFormData.title.trim()}
+            >
+              {copyingExamId ? 'Copying...' : 'Create Copy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
