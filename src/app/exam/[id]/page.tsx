@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Clock, HelpCircle, Repeat, School, Calendar, AlertTriangle } from 'lucide-react';
+import { GraduationCap, Clock, HelpCircle, Repeat, School, Calendar, AlertTriangle, Pause } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, getCountFromServer, Timestamp } from 'firebase/firestore';
@@ -25,6 +25,7 @@ interface ExamDetails {
     expiryDate?: Timestamp;
     restrictToEmails?: boolean;
     allowedEmails?: string[];
+    isPaused?: boolean;
 }
 
 export default function ExamTakerDetailsPage() {
@@ -37,6 +38,7 @@ export default function ExamTakerDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -65,6 +67,11 @@ export default function ExamTakerDetailsPage() {
                     setIsExpired(true);
                   }
                 }
+                
+                // Check if exam is paused
+                if (data.isPaused) {
+                  setIsPaused(true);
+                }
 
             } else {
                 // Handle exam not found
@@ -83,7 +90,7 @@ export default function ExamTakerDetailsPage() {
 
   const startExam = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!examDetails || isExpired) return;
+    if (!examDetails || isExpired || isPaused) return;
     
     setIsChecking(true);
     try {
@@ -198,6 +205,26 @@ export default function ExamTakerDetailsPage() {
                 <p className="font-medium">This exam has expired and can no longer be taken.</p>
             </div>
           )}
+          {isPaused && (
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-8 text-center mb-6 shadow-lg">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Pause className="h-10 w-10 text-white" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-orange-800">Exam is Over</h3>
+                  <p className="text-orange-700 font-medium max-w-md mx-auto">
+                    This exam has been paused by the administrator and is no longer accepting new participants.
+                  </p>
+                </div>
+                <div className="bg-white/70 backdrop-blur-sm rounded-lg px-4 py-2 border border-orange-200">
+                  <p className="text-sm text-orange-600 font-medium">
+                    Please contact your exam administrator for more information
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <form onSubmit={startExam} className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -208,7 +235,7 @@ export default function ExamTakerDetailsPage() {
                     required 
                     value={fullName} 
                     onChange={e => setFullName(e.target.value)} 
-                    disabled={isExpired}
+                    disabled={isExpired || isPaused}
                     className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -221,7 +248,7 @@ export default function ExamTakerDetailsPage() {
                     required 
                     value={email} 
                     onChange={e => setEmail(e.target.value)} 
-                    disabled={isExpired}
+                    disabled={isExpired || isPaused}
                     className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -235,7 +262,7 @@ export default function ExamTakerDetailsPage() {
                     required 
                     value={collegeName} 
                     onChange={e => setCollegeName(e.target.value)} 
-                    disabled={isExpired}
+                    disabled={isExpired || isPaused}
                     className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -250,7 +277,7 @@ export default function ExamTakerDetailsPage() {
                     required 
                     value={passingYear} 
                     onChange={e => setPassingYear(e.target.value)} 
-                    disabled={isExpired}
+                    disabled={isExpired || isPaused}
                     className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -258,7 +285,7 @@ export default function ExamTakerDetailsPage() {
             
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
               <div className="flex items-start space-x-3">
-                <Checkbox id="terms" required disabled={isExpired} className="mt-1"/>
+                <Checkbox id="terms" required disabled={isExpired || isPaused} className="mt-1"/>
                 <div className="grid gap-2 leading-none">
                   <label
                     htmlFor="terms"
@@ -280,9 +307,9 @@ export default function ExamTakerDetailsPage() {
             <Button 
               type="submit" 
               className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-primary/90 hover:to-brand-dark/90 transition-all duration-200 shadow-lg hover:shadow-xl" 
-              disabled={loading || isChecking || isExpired}
+              disabled={loading || isChecking || isExpired || isPaused}
             >
-              {isExpired ? 'Exam Expired' : (isChecking ? 'Verifying...' : 'Proceed to Verification')}
+              {isExpired ? 'Exam Expired' : (isPaused ? 'Exam is Over' : (isChecking ? 'Verifying...' : 'Proceed to Verification'))}
             </Button>
           </form>
         </CardContent>

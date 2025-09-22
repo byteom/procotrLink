@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, PlusCircle, Link2, Tag, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Link2, Tag, Trash2, Pause, Play } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, where, getCountFromServer, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,12 +46,14 @@ interface Exam {
   participants: number;
   createdAt: Timestamp;
   tags?: string[];
+  isPaused?: boolean;
 }
 
 export default function Dashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
+  const [pausingExamId, setPausingExamId] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -76,6 +78,7 @@ export default function Dashboard() {
             ...exam,
             participants,
             status: 'Published', // Mock status, can be developed further
+            isPaused: exam.isPaused || false,
           } as Exam;
         }));
 
@@ -139,6 +142,44 @@ export default function Dashboard() {
     }
   };
 
+  const handlePauseToggle = async (examId: string, currentPauseState: boolean) => {
+    setPausingExamId(examId);
+    try {
+      const examRef = doc(db, "exams", examId);
+      const newPauseState = !currentPauseState;
+      
+      await updateDoc(examRef, {
+        isPaused: newPauseState,
+        pausedAt: newPauseState ? new Date() : null
+      });
+      
+      // Update the local state
+      setExams(prevExams => 
+        prevExams.map(exam => 
+          exam.id === examId 
+            ? { ...exam, isPaused: newPauseState }
+            : exam
+        )
+      );
+      
+      toast({
+        title: newPauseState ? "Exam Paused!" : "Exam Resumed!",
+        description: newPauseState 
+          ? "The exam has been paused. No new participants can enter." 
+          : "The exam has been resumed. Participants can now enter again.",
+      });
+    } catch (error) {
+      console.error("Error toggling exam pause state: ", error);
+      toast({
+        variant: "destructive",
+        title: "Action Failed",
+        description: "There was an error updating the exam status. Please try again.",
+      });
+    } finally {
+      setPausingExamId(null);
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading exams...</div>
@@ -181,6 +222,7 @@ export default function Dashboard() {
                 <TableHead>Exam Title</TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead className="text-center">Participants</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -190,7 +232,7 @@ export default function Dashboard() {
             <TableBody>
               {exams.length === 0 && !loading ? (
                  <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24">No exams found. Create one to get started!</TableCell>
+                    <TableCell colSpan={6} className="text-center h-24">No exams found. Create one to get started!</TableCell>
                   </TableRow>
               ) : (
                 exams.map((exam) => (
@@ -202,6 +244,11 @@ export default function Dashboard() {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">{exam.participants}</TableCell>
+                    <TableCell>
+                      <Badge variant={exam.isPaused ? "destructive" : "default"}>
+                        {exam.isPaused ? "Paused" : "Active"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatDate(exam.createdAt)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -222,6 +269,23 @@ export default function Dashboard() {
                           <DropdownMenuItem onClick={() => handleCopyLink(exam.id)}>
                             <Link2 className="mr-2 h-4 w-4" />
                             Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handlePauseToggle(exam.id, exam.isPaused || false)}
+                            disabled={pausingExamId === exam.id}
+                          >
+                            {exam.isPaused ? (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                Resume Exam
+                              </>
+                            ) : (
+                              <>
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pause Exam
+                              </>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialog>

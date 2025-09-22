@@ -38,6 +38,7 @@ interface Exam {
     timeLimit?: number;
     perQuestionTimer: boolean;
     questions: Question[];
+    isPaused?: boolean;
 }
 
 export default function TakeExamPage() {
@@ -183,6 +184,18 @@ export default function TakeExamPage() {
 
             if (docSnap.exists()) {
                 const examData = docSnap.data() as Exam;
+                
+                // Check if exam is paused
+                if (examData.isPaused) {
+                  toast({
+                    variant: "destructive",
+                    title: "Exam is Over",
+                    description: "This exam has been paused by the administrator and is no longer available.",
+                  });
+                  router.push(`/exam/${examId}`);
+                  return;
+                }
+                
                 setExam(examData);
                 
                 // Try to load saved progress
