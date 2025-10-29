@@ -9,7 +9,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dfd:png": "mmdc -i docs/diagrams/level0-context.mmd -o docs/diagrams/png/level0-context.png && mmdc -i docs/diagrams/level1-admin.mmd -o docs/diagrams/png/level1-admin.png && mmdc -i docs/diagrams/level1-student.mmd -o docs/diagrams/png/level1-student.png && mmdc -i docs/diagrams/level1-auth-data.mmd -o docs/diagrams/png/level1-auth-data.png",
+    "dfd:svg": "mmdc -i docs/diagrams/level0-context.mmd -o docs/diagrams/svg/level0-context.svg && mmdc -i docs/diagrams/level1-admin.mmd -o docs/diagrams/svg/level1-admin.svg && mmdc -i docs/diagrams/level1-student.mmd -o docs/diagrams/svg/level1-student.svg && mmdc -i docs/diagrams/level1-auth-data.mmd -o docs/diagrams/svg/level1-auth-data.svg",
+    "dfd:build": "node -e \"require('fs').mkdirSync('docs/diagrams/png',{recursive:true});require('fs').mkdirSync('docs/diagrams/svg',{recursive:true})\" && npm run dfd:png && npm run dfd:svg"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -57,6 +60,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^10.9.1",
     "@tailwindcss/typography": "^0.5.13",
     "@types/node": "^20",
     "@types/react": "^18",
