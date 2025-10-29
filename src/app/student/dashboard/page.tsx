@@ -143,7 +143,28 @@ export default function StudentDashboard() {
             Welcome back, {user?.email}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => router.push('/student/skills')}>
+            Grow & Career Hub
+          </Button>
+        </div>
       </div>
+
+      {/* Suggestion if marks < 60% */}
+      {submissions.some(s => s.percentage < 60) && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="text-sm text-amber-900">
+                Your recent performance is below 60%. Visit the Grow & Career Hub to learn, practice, and improve your skills.
+              </div>
+              <Button variant="outline" onClick={() => router.push('/student/skills')}>
+                Explore Improvements
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Available Exams */}
       <Card>
