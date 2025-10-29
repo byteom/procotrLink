@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 interface Question {
     questionText: string;
@@ -46,6 +47,7 @@ export default function TakeExamPage() {
   const params = useParams();
   const examId = params.id as string;
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,8 +78,9 @@ export default function TakeExamPage() {
           }
       });
 
-      const participantName = localStorage.getItem('proctorlink-participant-name') || 'Anonymous';
-      const participantEmail = localStorage.getItem('proctorlink-participant-email') || 'No Email';
+      // Use logged-in user data if available, otherwise use localStorage
+      const participantName = user ? (user.displayName || 'Student') : localStorage.getItem('proctorlink-participant-name') || 'Anonymous';
+      const participantEmail = user?.email || localStorage.getItem('proctorlink-participant-email') || 'No Email';
       const collegeName = localStorage.getItem('proctorlink-participant-college') || 'N/A';
       const passingYear = localStorage.getItem('proctorlink-participant-year') || 'N/A';
       
@@ -89,6 +92,7 @@ export default function TakeExamPage() {
             participantEmail,
             collegeName,
             passingYear,
+            userId: user?.uid || null, // Link to user account
             answers,
             score,
             totalQuestions: exam.questions.length,

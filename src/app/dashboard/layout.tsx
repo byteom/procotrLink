@@ -9,6 +9,7 @@ import {
   Menu,
   LogOut,
   Shield,
+  User,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -38,7 +39,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, userRole } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -97,6 +98,16 @@ export default function DashboardLayout({
                 <Users className="h-4 w-4" />
                 Results
               </Link>
+              {(userRole === 'both' || userRole === 'student') && (
+                <Link
+                  href="/student/dashboard"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                  prefetch={false}
+                >
+                  <User className="h-4 w-4" />
+                  Student Dashboard
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -172,14 +183,23 @@ export default function DashboardLayout({
                   <Users className="h-5 w-5" />
                   Results
                 </Link>
-                 {isAdmin && (
-                    <Link
+                {(userRole === 'both' || userRole === 'student') && (
+                  <Link
+                    href="/student/dashboard"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <User className="h-5 w-5" />
+                    Student Dashboard
+                  </Link>
+                )}
+                {isAdmin && (
+                  <Link
                     href="/admin"
                     className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                    >
+                  >
                     <Shield className="h-5 w-5" />
                     Admin Panel
-                    </Link>
+                  </Link>
                 )}
               </nav>
               <div className="mt-auto">

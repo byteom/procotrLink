@@ -26,6 +26,9 @@ export default function Home() {
                 <Link href="#faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">FAQ</Link>
             </nav>
             <div className="ml-auto flex items-center gap-4 sm:ml-4">
+              <Button asChild variant="outline">
+                <Link href="/student/login">Student Login</Link>
+              </Button>
               <Button asChild variant="default">
                 <Link href="/login">Organizer Login</Link>
               </Button>

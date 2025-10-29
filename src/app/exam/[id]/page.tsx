@@ -13,6 +13,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs, getCountFromServer, Timestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 
 interface ExamDetails {
@@ -33,6 +34,7 @@ export default function ExamTakerDetailsPage() {
   const params = useParams();
   const examId = params.id as string;
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +88,31 @@ export default function ExamTakerDetailsPage() {
     }
     fetchExamDetails();
   }, [examId, router, toast]);
+
+  // Autofill from student profile
+  useEffect(() => {
+    if (!user?.uid) return;
+    const loadProfile = async () => {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data() as any;
+          setFullName(prev => prev || data.fullName || '');
+          setEmail(prev => prev || data.email || user.email || '');
+          setCollegeName(prev => prev || data.college || '');
+          setPassingYear(prev => prev || data.graduationYear || '');
+        } else {
+          // Fallback to auth email if profile doc missing
+          setEmail(prev => prev || user.email || '');
+        }
+      } catch (e) {
+        // Non-fatal: keep form editable
+        setEmail(prev => prev || user?.email || '');
+      }
+    };
+    loadProfile();
+  }, [user]);
 
 
   const startExam = async (e: React.FormEvent<HTMLFormElement>) => {
